@@ -9,12 +9,36 @@
  * (The handle_new_user trigger deliberately refuses to grant OPS from signup
  *  metadata, so the grant must happen here, out of band.)
  *
- * Usage:
- *   SUPABASE_SERVICE_ROLE_KEY=... NEXT_PUBLIC_SUPABASE_URL=... DATABASE_URL=... \
- *     npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
+ * Reads config from .env.local (or .env) automatically, so all you pass is the
+ * email + password:
+ *
+ *   npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
+ *
+ * Needs these set in .env.local: NEXT_PUBLIC_SUPABASE_URL,
+ * SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, DIRECT_URL.
  */
+import { readFileSync } from "fs";
 import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
+
+// Minimal .env loader (no dependency): load .env.local then .env, without
+// overriding anything already in the real environment.
+for (const file of [".env.local", ".env"]) {
+  try {
+    for (const line of readFileSync(file, "utf8").split("\n")) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+      if (!m) continue;
+      const key = m[1];
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (process.env[key] === undefined) process.env[key] = val;
+    }
+  } catch {
+    // file not present — fine
+  }
+}
 
 const [, , email, password] = process.argv;
 if (!email || !password) {
@@ -25,7 +49,7 @@ if (!email || !password) {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !serviceKey) {
-  console.error("Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY — add them to .env.local.");
   process.exit(1);
 }
 

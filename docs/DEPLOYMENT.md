@@ -108,14 +108,15 @@ The app uses **Supabase Auth (email + password)**. Configure the project once:
    with the service-role script (run locally or in a one-off job):
 
    ```bash
-   SUPABASE_SERVICE_ROLE_KEY=... NEXT_PUBLIC_SUPABASE_URL=https://yywcerybuaxndsvdkjiw.supabase.co \
-   DATABASE_URL=... DIRECT_URL=... \
-     npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
+   # reads config from .env.local automatically
+   npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
    ```
 
-   It sets the role in both auth metadata (for route gating) and `public.users`
-   (authoritative for RLS). The dev-fixture ops user seeded earlier
-   (`ops@whetstone.dev`) has no password — use this script to make a real one.
+   (Requires `.env.local` to have `NEXT_PUBLIC_SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`.) It sets the role in
+   both auth metadata (for route gating) and `public.users` (authoritative for
+   RLS). The dev-fixture ops user seeded earlier (`ops@whetstone.dev`) has no
+   password — use this script to make a real one.
 
 Roles: customers self-serve at `/signup`; advisors at `/advisor/apply` (public);
 ops only via the script above.
