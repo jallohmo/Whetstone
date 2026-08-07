@@ -1,21 +1,15 @@
 import Link from "next/link";
-import { PageHeader, Card, ScaffoldNote } from "@/components/ui";
-import { CheckCircle2, Circle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { PageHeader, Card } from "@/components/ui";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { AdvisorOnboardingForm } from "@/components/advisor/AdvisorOnboardingForm";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 // Screen 10 — Advisor application/onboarding (A1, B1, B2).
-// This page is public (exempt from the advisor gate) so prospective advisors can
-// create an account here. Step-by-step wizard, NOT one long form — explicit steps,
-// large targets, forgiving of hesitant interaction across digital-fluency levels.
+// Public entry: prospective advisors create an ADVISOR account here, then complete
+// the profile + specialties + credentials. Profile stays PENDING until ops verifies.
 export const dynamic = "force-dynamic";
-
-const steps = [
-  { title: "Identity", body: "Confirm who you are (ID check via our verification partner)." },
-  { title: "Background & credentials", body: "Your experience and any documents that back it up." },
-  { title: "Industry & specialties", body: "Tag the industries and specialties you can genuinely advise on." },
-  { title: "Availability", body: "Set the times you're open to sessions." },
-];
 
 export default async function AdvisorApplyPage() {
   const user = await getCurrentUser();
@@ -26,7 +20,7 @@ export default async function AdvisorApplyPage() {
       <div>
         <PageHeader
           title="Become a Whetstone advisor"
-          subtitle="Create your advisor account to start. It's four short steps, and verification is what makes your profile trusted."
+          subtitle="Create your advisor account to start. It's a short application, and verification is what makes your profile trusted."
         />
         <Card>
           <AuthForm mode="signup" role="ADVISOR" next="/advisor/apply" />
@@ -41,38 +35,38 @@ export default async function AdvisorApplyPage() {
     );
   }
 
+  // Signed in but wrong role (a customer landed here) -> send home.
+  if (user.role !== "ADVISOR") redirect("/");
+
+  // Already applied -> show status instead of re-collecting everything.
+  const existing = await prisma.advisorProfile.findUnique({
+    where: { userId: user.id },
+    select: { verificationStatus: true },
+  });
+  if (existing && existing.verificationStatus !== "NEEDS_MORE_INFO") {
+    redirect("/advisor/verification-status");
+  }
+
+  const industries = await prisma.industryTaxonomy.findMany({
+    where: { parentId: null },
+    orderBy: { name: "asc" },
+    include: { children: { orderBy: { name: "asc" } } },
+  });
+
   return (
     <div>
       <PageHeader
-        title="Become a Whetstone advisor"
-        subtitle="Four short steps. Worth doing properly — verification is what makes your profile trusted."
+        title={existing ? "Add the missing details" : "Complete your advisor profile"}
+        subtitle="Worth doing properly — this is what customers and our verification team see."
       />
-      <ol className="flex flex-col gap-list-rhythm">
-        {steps.map((s, i) => (
-          <li key={s.title}>
-            <Card className="flex items-start gap-4">
-              {i === 0 ? (
-                <Circle className="mt-0.5 shrink-0 text-ink" size={22} />
-              ) : (
-                <CheckCircle2 className="mt-0.5 shrink-0 text-gray-300" size={22} />
-              )}
-              <div>
-                <h3 className="text-h3 text-ink">
-                  Step {i + 1}: {s.title}
-                </h3>
-                <p className="mt-1 text-body text-gray-600">{s.body}</p>
-              </div>
-            </Card>
-          </li>
-        ))}
-      </ol>
-      <div className="mt-6">
-        <ScaffoldNote>
-          AdvisorOnboardingWizard. Credential/ID documents upload to the private{" "}
-          <code className="font-mono">advisor-credentials</code> Supabase Storage bucket. Creates a
-          User (role ADVISOR) + AdvisorProfile in a &quot;signed up but not verified&quot; state.
-        </ScaffoldNote>
-      </div>
+      <AdvisorOnboardingForm
+        userId={user.id}
+        industries={industries.map((i) => ({
+          id: i.id,
+          name: i.name,
+          children: i.children.map((c) => ({ id: c.id, name: c.name })),
+        }))}
+      />
     </div>
   );
 }
