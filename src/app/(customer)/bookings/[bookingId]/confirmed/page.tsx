@@ -1,22 +1,32 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
+import { prisma } from "@/lib/prisma";
 
 // Screen 7 — Booking confirmation (A4/A6). Plain-spoken copy, prep guidance.
-export default function BookingConfirmedPage({
+export default async function BookingConfirmedPage({
   params,
 }: {
   params: { bookingId: string };
 }) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: params.bookingId },
+    include: { advisor: { include: { user: true } } },
+  });
+  if (!booking) notFound();
+
+  const advisorName = booking.advisor.user.email.split("@")[0];
+
   return (
     <div className="mx-auto max-w-xl">
       <PageHeader title="You're booked in" />
       <Card>
         <p className="flex items-center gap-2 text-body-lg font-semibold text-ink">
           <CheckCircle2 className="text-green-500" size={20} />
-          You&apos;re booked in with A. Advisor.
+          You&apos;re booked in with {advisorName}.
         </p>
         <p className="mt-2 text-body text-gray-600">
           Come with your actual problem — that&apos;s what this is for. You&apos;ll get a
@@ -25,8 +35,10 @@ export default function BookingConfirmedPage({
 
         <div className="mt-5">
           <BoundedScopeSummary
-            sessionCount={1}
-            scopeDescription="One focused 60-minute session on a single defined problem."
+            sessionCount={booking.sessionCount}
+            scopeDescription={booking.scopeDescription}
+            priceCents={booking.priceCents}
+            currency={booking.currency}
           />
         </div>
 
@@ -35,7 +47,7 @@ export default function BookingConfirmedPage({
         </div>
 
         <div className="mt-6 flex gap-3">
-          <Link href={`/bookings/${params.bookingId}/messages`} className="rounded-md border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink">
+          <Link href={`/bookings/${booking.id}/messages`} className="rounded-md border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink">
             Message your advisor
           </Link>
           <Link href="/" className="rounded-md px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100">

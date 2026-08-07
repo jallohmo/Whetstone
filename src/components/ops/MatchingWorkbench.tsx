@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
+import { createMatchDecision } from "@/lib/actions/matches";
 
 /**
  * Screen 16 / MatchingWorkbench (A3, C1). Filterable advisor list against an open
- * need. The MatchDecisionLog is built INTO the matching action — advisors
- * considered + advisor chosen + reason are captured inline, never an optional
- * field added afterward. This logging is a Phase 2/3 data-moat dependency, so it
- * is deliberately not skippable: you can't confirm a match without a reason.
+ * need. The MatchDecisionLog is built INTO the matching action — advisorsConsidered
+ * + advisorChosenId + reason are captured inline and submitted together via the
+ * createMatchDecision server action. This logging is a Phase 2/3 data-moat
+ * dependency, so it is deliberately NOT skippable: the confirm button stays
+ * disabled until a chosen advisor (auto-added to "considered") and a reason exist.
  */
 interface Candidate {
   id: string;
@@ -32,10 +35,17 @@ export function MatchingWorkbench({
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
 
-  const canConfirm = chosen && reason.trim().length > 0 && considered.includes(chosen);
+  const canConfirm = Boolean(chosen) && reason.trim().length > 0;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <form action={createMatchDecision} className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <input type="hidden" name="needId" value={needId} />
+      <input type="hidden" name="advisorChosenId" value={chosen} />
+      {/* Considered ids are submitted as repeated fields; the chosen id is force-added server-side too. */}
+      {considered.map((id) => (
+        <input key={id} type="hidden" name="advisorsConsidered" value={id} />
+      ))}
+
       <div className="overflow-hidden rounded-md border border-gray-300 bg-white">
         <table className="w-full">
           <thead className="border-b border-gray-300 bg-gray-50 text-left text-2xs uppercase tracking-wide text-gray-500">
@@ -47,6 +57,13 @@ export function MatchingWorkbench({
             </tr>
           </thead>
           <tbody>
+            {candidates.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-3 py-6 text-center text-gray-500">
+                  No verified advisors available yet.
+                </td>
+              </tr>
+            )}
             {candidates.map((c) => (
               <tr key={c.id} className="border-b border-gray-150 hover:bg-gray-50">
                 <td className="px-3 py-2">
@@ -54,6 +71,7 @@ export function MatchingWorkbench({
                     type="checkbox"
                     checked={considered.includes(c.id)}
                     onChange={() => toggleConsidered(c.id)}
+                    aria-label={`Considered ${c.name}`}
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -64,12 +82,13 @@ export function MatchingWorkbench({
                 <td className="px-3 py-2">
                   <input
                     type="radio"
-                    name="chosen"
+                    name="chosen-ui"
                     checked={chosen === c.id}
                     onChange={() => {
                       setChosen(c.id);
                       if (!considered.includes(c.id)) toggleConsidered(c.id);
                     }}
+                    aria-label={`Choose ${c.name}`}
                   />
                 </td>
               </tr>
@@ -88,24 +107,28 @@ export function MatchingWorkbench({
           Why this advisor?
         </label>
         <textarea
+          name="reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={4}
           placeholder="Reason for the match — required."
           className="mt-1 w-full rounded-sm border border-gray-300 px-2 py-1.5 text-[13px] outline-none focus:border-ink"
         />
-        <button
-          type="button"
-          disabled={!canConfirm}
-          onClick={() => {
-            // TODO(build-time): Server Action writes MatchDecision (advisorsConsidered,
-            // advisorChosenId, reason, decidedBy) + sets Need.status = "matched".
-          }}
-          className="mt-3 w-full rounded-sm bg-ink px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
-        >
-          Confirm match for {needId}
-        </button>
+        <ConfirmButton needId={needId} disabled={!canConfirm} />
       </aside>
-    </div>
+    </form>
+  );
+}
+
+function ConfirmButton({ needId, disabled }: { needId: string; disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className="mt-3 w-full rounded-sm bg-ink px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
+    >
+      {pending ? "Saving…" : `Confirm match for ${needId.slice(0, 8)}…`}
+    </button>
   );
 }

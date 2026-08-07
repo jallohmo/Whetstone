@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { createNeed } from "@/lib/actions/needs";
 
 export interface TaxonomyOption {
   id: string;
@@ -11,32 +13,21 @@ export interface TaxonomyOption {
 
 /**
  * Screen 2 / NeedIntakeForm (A2). Structured taxonomy selector (industry ->
- * sub-specialty), problem area, description, timing. Should feel like "ask a
- * question", not "fill out an application". No account required to post — the
- * need is a guest need until booking (A2 friction-reduction decision).
- *
- * Options come from the IndustryTaxonomy table, passed in by the server page —
- * never hardcoded, so the taxonomy can extend without a redeploy.
+ * sub-specialty), problem area, description. Feels like "ask a question", not
+ * "fill out an application". No account required — the need is a guest need until
+ * booking. Options come from IndustryTaxonomy (never hardcoded); submits to the
+ * createNeed server action, which creates the Need and routes to the matches view.
  */
 export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] }) {
   const [industryId, setIndustryId] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
   const subSpecialties =
     industries.find((i) => i.id === industryId)?.children ?? [];
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    // TODO(build-time): POST to a Server Action that creates a guest Need and
-    // routes to /needs/:needId/matches. Endpoint contract is deferred per handover.
-    setTimeout(() => setSubmitting(false), 600);
-  }
-
   return (
-    <form onSubmit={onSubmit}>
+    <form action={createNeed}>
       <Field label="What kind of business do you run?" hint="Pick the closest industry — you can refine below.">
         <select
+          name="industryId"
           value={industryId}
           onChange={(e) => setIndustryId(e.target.value)}
           required
@@ -75,12 +66,19 @@ export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] })
         <Textarea name="description" rows={5} placeholder="Describe the situation…" required />
       </Field>
 
-      <Button type="submit" disabled={submitting}>
-        {submitting ? "Finding advisors…" : "See who can help"}
-      </Button>
+      <SubmitButton />
       <p className="mt-3 text-sm text-gray-500">
         No account needed yet — you only sign up when you decide to book.
       </p>
     </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? "Finding advisors…" : "See who can help"}
+    </Button>
   );
 }

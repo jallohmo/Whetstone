@@ -2,6 +2,9 @@ import { PageHeader } from "@/components/ui";
 import { NeedIntakeForm } from "@/components/customer/NeedIntakeForm";
 import { prisma } from "@/lib/prisma";
 
+// Reads the taxonomy at request time (and avoids a build-time DB dependency).
+export const dynamic = "force-dynamic";
+
 // Screen 2 — Post a need (A2).
 export default async function NewNeedPage() {
   // Taxonomy is data, not hardcoded options. Top-level industries + their children.

@@ -15,8 +15,11 @@ export async function middleware(request: NextRequest) {
   const { response, user, role } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  const needsAdvisor = pathname.startsWith("/advisor");
-  const needsOps = pathname.startsWith("/ops");
+  // Segment-aware so the public "/advisors/:id" profile route is NOT caught by
+  // the advisor-dashboard gate ("/advisor", "/advisor/..."). "/advisors" is a
+  // separate, public customer route group.
+  const needsAdvisor = pathname === "/advisor" || pathname.startsWith("/advisor/");
+  const needsOps = pathname === "/ops" || pathname.startsWith("/ops/");
 
   if ((needsAdvisor || needsOps) && !user) {
     const url = request.nextUrl.clone();

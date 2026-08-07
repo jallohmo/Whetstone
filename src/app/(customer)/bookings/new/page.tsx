@@ -1,24 +1,28 @@
-import Link from "next/link";
-import { PageHeader, Card, ScaffoldNote } from "@/components/ui";
+import { PageHeader, Card, Button } from "@/components/ui";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
+import { createBooking } from "@/lib/actions/bookings";
+import { prisma } from "@/lib/prisma";
 
-// Screen 5 — Booking flow (A4, A5). Package selection (bounded-scope only,
-// no open-ended hourly option) + calendar picker. Currency comes from the
-// package and is carried through the whole booking.
-export default function NewBookingPage({
+// Screen 5 — Booking flow (A4, A5). Bounded-scope packages only (no open-ended
+// hourly option — enforced by what the Package table exposes). Each package
+// carries its own currency; the choice is copied onto the booking at creation.
+export default async function NewBookingPage({
   searchParams,
 }: {
   searchParams: { advisorId?: string; needId?: string };
 }) {
-  // Sample packages — real ones come from the Package table, each with its own currency.
-  const packages = [
-    { id: "pkg_1", name: "Single session", sessionCount: 1, scope: "One focused 60-minute session on a single defined problem.", priceCents: 12000, currency: "USD" },
-    { id: "pkg_3", name: "Three-session engagement", sessionCount: 3, scope: "Three sessions over four weeks — diagnose, plan, review.", priceCents: 30000, currency: "USD" },
-  ];
+  const advisorId = searchParams.advisorId ?? "";
+  const packages = await prisma.package.findMany({
+    where: { active: true },
+    orderBy: { priceCents: "asc" },
+  });
 
   return (
     <div className="mx-auto max-w-xl">
-      <PageHeader title="Book a session" subtitle="Pick a package and a time. Every package has a fixed, defined scope." />
+      <PageHeader
+        title="Book a session"
+        subtitle="Pick a package. Every package has a fixed, defined scope."
+      />
       <div className="flex flex-col gap-list-rhythm">
         {packages.map((p) => (
           <Card key={p.id}>
@@ -26,29 +30,26 @@ export default function NewBookingPage({
             <div className="mt-3">
               <BoundedScopeSummary
                 sessionCount={p.sessionCount}
-                scopeDescription={p.scope}
+                scopeDescription={p.scopeDescription}
                 priceCents={p.priceCents}
                 currency={p.currency}
               />
             </div>
-            <div className="mt-4">
-              <Link
-                href={`/bookings/pending/checkout?advisorId=${searchParams.advisorId ?? ""}&packageId=${p.id}`}
-                className="inline-flex rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow"
-              >
-                Choose this package
-              </Link>
-            </div>
+            <form action={createBooking} className="mt-4">
+              <input type="hidden" name="advisorId" value={advisorId} />
+              <input type="hidden" name="packageId" value={p.id} />
+              {searchParams.needId && (
+                <input type="hidden" name="needId" value={searchParams.needId} />
+              )}
+              <Button type="submit">Choose this package</Button>
+            </form>
           </Card>
         ))}
       </div>
-      <div className="mt-6">
-        <ScaffoldNote>
-          BookingCalendar reads AvailabilitySlot for advisor{" "}
-          <code className="font-mono">{searchParams.advisorId ?? "—"}</code>. Package selector must
-          expose bounded-scope packages only (enforced in options, not just copy).
-        </ScaffoldNote>
-      </div>
+      <p className="mt-6 text-sm text-gray-500">
+        A calendar picker (from the advisor&apos;s availability) slots in here before
+        checkout. Scheduling is the next piece to wire.
+      </p>
     </div>
   );
 }

@@ -1,48 +1,76 @@
 import Link from "next/link";
-import { PageHeader, Card, ScaffoldNote } from "@/components/ui";
+import { notFound } from "next/navigation";
+import { PageHeader, Card } from "@/components/ui";
 import { VerificationBadge } from "@/components/shared/VerificationBadge";
 import { ReviewSummary } from "@/components/shared/ReviewSummary";
 import { RelevanceExplainer } from "@/components/shared/RelevanceExplainer";
 import { IndustryTag } from "@/components/shared/IndustryTag";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
+import { prisma } from "@/lib/prisma";
 
-// Screen 4 — Advisor profile view (A1). Credibility-forward.
-export default function AdvisorProfilePage({
+// Screen 4 — Advisor profile view (A1). Credibility-forward. Only VERIFIED
+// advisors are shown publicly (also enforced by RLS on advisor_profiles).
+export default async function AdvisorProfilePage({
   params,
+  searchParams,
 }: {
   params: { advisorId: string };
+  searchParams: { needId?: string };
 }) {
+  const advisor = await prisma.advisorProfile.findUnique({
+    where: { id: params.advisorId },
+    include: {
+      user: true,
+      specialtyTags: true,
+      bookings: { include: { review: true } },
+    },
+  });
+
+  if (!advisor || advisor.verificationStatus !== "VERIFIED") notFound();
+
+  const ratings = advisor.bookings
+    .map((b) => b.review?.rating)
+    .filter((r): r is number => typeof r === "number");
+  const avg = ratings.length
+    ? ratings.reduce((s, r) => s + r, 0) / ratings.length
+    : null;
+
+  const bookHref = `/bookings/new?advisorId=${advisor.id}${
+    searchParams.needId ? `&needId=${searchParams.needId}` : ""
+  }`;
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title="Advisor profile" />
       <Card>
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-h2 text-ink">A. Advisor</h2>
+            <h2 className="text-h2 text-ink">{advisor.user.email.split("@")[0]}</h2>
             <p className="mt-1 text-body text-gray-500">
-              18 years&apos; experience · Former operations director
+              {advisor.yearsExperience} years&apos; experience
             </p>
             <div className="mt-2">
-              <ReviewSummary rating={4.9} count={27} />
+              <ReviewSummary rating={avg} count={ratings.length} />
             </div>
           </div>
-          <VerificationBadge status="VERIFIED" />
+          <VerificationBadge status={advisor.verificationStatus} />
         </div>
 
-        <div className="mt-4">
-          <RelevanceExplainer text="Ran regional manufacturing operations; now advises SMEs on cash flow, supplier terms and compliance." />
-        </div>
+        {advisor.headline && (
+          <div className="mt-4">
+            <RelevanceExplainer text={advisor.headline} />
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-1.5">
-          <IndustryTag name="Manufacturing" />
-          <IndustryTag name="Cash flow" variant="specialty" />
-          <IndustryTag name="Compliance" variant="specialty" />
+          {advisor.specialtyTags.map((t) => (
+            <IndustryTag key={t.id} name={t.name} variant="specialty" />
+          ))}
         </div>
 
-        <div className="mt-5 border-t border-dashed border-gray-300 pt-4 text-body text-gray-600">
-          Bio, credentials, and reviews render here from AdvisorProfile,
-          VerificationRecord evidence (verified state only), and Review.
-        </div>
+        <p className="mt-5 border-t border-dashed border-gray-300 pt-4 text-body text-gray-700">
+          {advisor.bio}
+        </p>
 
         <div className="mt-5">
           <InsuranceCoverageNotice />
@@ -50,19 +78,13 @@ export default function AdvisorProfilePage({
 
         <div className="mt-6">
           <Link
-            href={`/bookings/new?advisorId=${params.advisorId}`}
+            href={bookHref}
             className="inline-flex rounded-md bg-ink px-6 py-3 text-body font-semibold text-white shadow-ink-glow"
           >
             Book a session
           </Link>
         </div>
       </Card>
-      <div className="mt-6">
-        <ScaffoldNote>
-          Profile for advisor <code className="font-mono">{params.advisorId}</code>. Only VERIFIED
-          advisors are publicly readable (enforced by RLS on <code className="font-mono">advisor_profiles</code>).
-        </ScaffoldNote>
-      </div>
     </div>
   );
 }
