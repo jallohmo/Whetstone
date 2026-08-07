@@ -115,6 +115,24 @@ then `npm run db:seed` and `npm run db:seed:demo`.
 
 `npm run typecheck` and `npm run lint` should pass before committing.
 
+## Authentication
+
+Real **Supabase Auth** (email + password) is wired:
+
+- `/signup` (customers) and `/advisor/apply` (advisors, public) create accounts;
+  the chosen role goes into auth metadata → the `handle_new_user` trigger mirrors
+  it into `public.users.role`. `OPS_ADMIN` is never self-serve — create it with
+  `scripts/create-ops-admin.ts` (service role).
+- `/login`, sign-out, and `/auth/callback` (email-confirmation code exchange) are
+  wired; middleware gates the three route groups by role.
+- `getCurrentUser()` (`src/lib/auth.ts`) is the server-side session/role source of
+  truth (reads `public.users`, not client metadata). The booking flow uses the
+  authenticated customer when signed in, and still supports the guest-need →
+  account-at-booking fallback.
+
+Auth dashboard config (redirect URLs, email confirmation, SMTP, first ops admin)
+is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §5**.
+
 ## Deploying to Vercel
 
 The repo is deploy-ready (`vercel.json`, `postinstall: prisma generate`, and the

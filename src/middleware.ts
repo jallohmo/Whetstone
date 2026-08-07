@@ -18,7 +18,11 @@ export async function middleware(request: NextRequest) {
   // Segment-aware so the public "/advisors/:id" profile route is NOT caught by
   // the advisor-dashboard gate ("/advisor", "/advisor/..."). "/advisors" is a
   // separate, public customer route group.
-  const needsAdvisor = pathname === "/advisor" || pathname.startsWith("/advisor/");
+  // "/advisor/apply" is the public application entry — prospective advisors must
+  // reach it before they have an account, so it's exempt from the advisor gate.
+  const isAdvisorApply = pathname === "/advisor/apply";
+  const needsAdvisor =
+    !isAdvisorApply && (pathname === "/advisor" || pathname.startsWith("/advisor/"));
   const needsOps = pathname === "/ops" || pathname.startsWith("/ops/");
 
   if ((needsAdvisor || needsOps) && !user) {

@@ -1,9 +1,15 @@
+import Link from "next/link";
 import { PageHeader, Card, ScaffoldNote } from "@/components/ui";
 import { CheckCircle2, Circle } from "lucide-react";
+import { AuthForm } from "@/components/auth/AuthForm";
+import { getCurrentUser } from "@/lib/auth";
 
 // Screen 10 — Advisor application/onboarding (A1, B1, B2).
-// Step-by-step wizard, NOT one long form. Explicit "Next" steps, large targets,
-// forgiving of hesitant interaction — the audience spans digital fluency levels.
+// This page is public (exempt from the advisor gate) so prospective advisors can
+// create an account here. Step-by-step wizard, NOT one long form — explicit steps,
+// large targets, forgiving of hesitant interaction across digital-fluency levels.
+export const dynamic = "force-dynamic";
+
 const steps = [
   { title: "Identity", body: "Confirm who you are (ID check via our verification partner)." },
   { title: "Background & credentials", body: "Your experience and any documents that back it up." },
@@ -11,7 +17,30 @@ const steps = [
   { title: "Availability", body: "Set the times you're open to sessions." },
 ];
 
-export default function AdvisorApplyPage() {
+export default async function AdvisorApplyPage() {
+  const user = await getCurrentUser();
+
+  // Not signed in -> create an ADVISOR account first.
+  if (!user) {
+    return (
+      <div>
+        <PageHeader
+          title="Become a Whetstone advisor"
+          subtitle="Create your advisor account to start. It's four short steps, and verification is what makes your profile trusted."
+        />
+        <Card>
+          <AuthForm mode="signup" role="ADVISOR" next="/advisor/apply" />
+        </Card>
+        <p className="mt-6 text-sm text-gray-500">
+          Already applied?{" "}
+          <Link href="/login?next=/advisor/verification-status" className="font-semibold text-brand-blue hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader

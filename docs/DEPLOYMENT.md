@@ -88,7 +88,39 @@ by hand (above) is the simplest and is what this repo expects.
 - `/needs/new` shows the seeded industry dropdown (confirms DB connectivity).
 - `/ops` and `/advisor/*` redirect to `/login` (confirms role-gating middleware).
 
-## 5. Notes
+## 5. Supabase Auth setup
+
+The app uses **Supabase Auth (email + password)**. Configure the project once:
+
+1. **Authentication → URL Configuration**
+   - **Site URL:** your production URL (e.g. `https://whetstone.vercel.app`).
+   - **Redirect URLs:** add `https://<your-domain>/auth/callback` **and**
+     `https://*-<your-team>.vercel.app/auth/callback` for preview deploys, plus
+     `http://localhost:3000/auth/callback` for local dev. The email-confirmation
+     link returns here (`src/app/auth/callback/route.ts`) to exchange the code
+     for a session.
+2. **Authentication → Providers → Email**
+   - Keep **Confirm email** ON for production. For quick local testing you can
+     turn it OFF so signups get a session immediately (turn it back on before launch).
+   - The built-in Supabase email sender is rate-limited — configure your own SMTP
+     under **Project Settings → Auth → SMTP** before real signups.
+3. **First ops admin** — there is no public signup for `OPS_ADMIN`. Create one
+   with the service-role script (run locally or in a one-off job):
+
+   ```bash
+   SUPABASE_SERVICE_ROLE_KEY=... NEXT_PUBLIC_SUPABASE_URL=https://yywcerybuaxndsvdkjiw.supabase.co \
+   DATABASE_URL=... DIRECT_URL=... \
+     npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
+   ```
+
+   It sets the role in both auth metadata (for route gating) and `public.users`
+   (authoritative for RLS). The dev-fixture ops user seeded earlier
+   (`ops@whetstone.dev`) has no password — use this script to make a real one.
+
+Roles: customers self-serve at `/signup`; advisors at `/advisor/apply` (public);
+ops only via the script above.
+
+## 6. Notes
 
 - **Migrations:** applied to Supabase already. When you change the schema later,
   run `prisma migrate` against `DIRECT_URL` and apply any new `supabase/migrations/*.sql`

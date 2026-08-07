@@ -4,17 +4,17 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { platformConfig } from "@/lib/platform-config";
+import { getCurrentUser } from "@/lib/auth";
 
 /**
  * A4/A5 — Create a booking from an advisor + package. Session count, scope, price
  * and CURRENCY are all COPIED from the package at booking time (never referenced
  * live), protecting the bounded-scope guarantee if packages change later.
  *
- * Customer identity: once auth is wired this is the signed-in customer. Until then
- * the booking flow resolves-or-creates a lightweight customer from the guest email
- * captured on the need (the "guest need -> real account at booking" conversion in
- * the auth model). The account-creation shim is the only part that changes when
- * Supabase Auth lands — the booking write itself is final.
+ * Customer identity: if the user is signed in (Supabase Auth), the booking is
+ * tied to their real CustomerProfile. If not, the guest-need -> account-at-booking
+ * fallback still resolves a lightweight customer from an email, so the no-account
+ * need flow keeps working end to end.
  */
 export async function createBooking(formData: FormData) {
   const advisorId = String(formData.get("advisorId") ?? "");
@@ -30,12 +30,15 @@ export async function createBooking(formData: FormData) {
 
   const pkg = await prisma.package.findUniqueOrThrow({ where: { id: packageId } });
 
-  // Resolve-or-create the customer (stand-in for auth.uid()-backed identity).
   const industryId =
     (needId && (await prisma.need.findUnique({ where: { id: needId } }))?.industryId) ||
     (await prisma.industryTaxonomy.findFirstOrThrow({ where: { parentId: null } })).id;
 
-  const customer = await resolveCustomer(email, industryId);
+  // Prefer the authenticated customer; fall back to guest resolution.
+  const current = await getCurrentUser();
+  const customer = current
+    ? await resolveAuthedCustomer(current.id, current.email, industryId)
+    : await resolveCustomer(email, industryId);
 
   const booking = await prisma.booking.create({
     data: {
@@ -101,8 +104,24 @@ export async function confirmBooking(formData: FormData) {
 }
 
 /**
- * Stand-in identity resolver. Replace the User row creation with the Supabase
- * auth trigger once auth is wired; the CustomerProfile linkage stays as-is.
+ * Authenticated customer: the User row already exists (created by the auth
+ * trigger at signup). Reuse their CustomerProfile, creating it on first booking.
+ */
+async function resolveAuthedCustomer(
+  userId: string,
+  email: string,
+  industryId: string,
+) {
+  const existing = await prisma.customerProfile.findUnique({ where: { userId } });
+  if (existing) return existing;
+  return prisma.customerProfile.create({
+    data: { userId, businessName: email.split("@")[0], industryId },
+  });
+}
+
+/**
+ * Guest fallback (no account yet): resolve-or-create a lightweight customer from
+ * an email. Used only when nobody is signed in — the guest-need -> booking path.
  */
 async function resolveCustomer(email: string, industryId: string) {
   const existing = await prisma.user.findUnique({

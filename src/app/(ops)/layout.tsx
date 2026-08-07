@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, GitCompareArrows, LayoutDashboard, ShieldCheck } from "lucide-react";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /**
  * Ops shell (Screens 15-18). Dark 212px rail, dense gray150 canvas, 13px base
@@ -36,6 +37,7 @@ export default function OpsLayout({
             </Link>
           ))}
         </nav>
+        <SignOutButton className="mt-auto rounded-sm px-2.5 py-2 text-left text-gray-300 hover:bg-gray-800 hover:text-white" />
       </aside>
       <main className="flex-1 overflow-x-auto px-5 py-6">{children}</main>
     </div>

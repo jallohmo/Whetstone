@@ -1,15 +1,19 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /**
  * Customer shell (Screens 1-9). Canvas gray100, centered white "pill" top bar,
  * max-width 1180. Deliberately calm and low cognitive load — this audience is
  * time-poor and phone-first, not power users. Do NOT unify with advisor/ops shells.
  */
-export default function CustomerLayout({
+export default async function CustomerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getCurrentUser();
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-shell px-4 pt-5">
@@ -18,9 +22,18 @@ export default function CustomerLayout({
             Whetstone
           </Link>
           <nav className="flex items-center gap-1 text-sm">
-            <Link href="/advisor/apply" className="rounded-md px-3 py-2 text-gray-600 hover:bg-gray-100">
-              Become an advisor
-            </Link>
+            {user ? (
+              <SignOutButton className="rounded-md px-3 py-2 text-gray-600 hover:bg-gray-100" />
+            ) : (
+              <>
+                <Link href="/advisor/apply" className="rounded-md px-3 py-2 text-gray-600 hover:bg-gray-100">
+                  Become an advisor
+                </Link>
+                <Link href="/login" className="rounded-md px-3 py-2 text-gray-600 hover:bg-gray-100">
+                  Sign in
+                </Link>
+              </>
+            )}
             <Link
               href="/needs/new"
               className="rounded-md bg-ink px-4 py-2 font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"

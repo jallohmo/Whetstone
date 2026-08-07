@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarClock, Inbox, LayoutList, UserCheck, Wallet } from "lucide-react";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 /**
  * Advisor shell (Screens 10-14). 264px white sidebar. Larger targets, plain
@@ -37,6 +38,7 @@ export default function AdvisorLayout({
             </Link>
           ))}
         </nav>
+        <SignOutButton className="mt-auto rounded-md px-3 py-2.5 text-left text-body text-gray-600 hover:bg-gray-100" />
       </aside>
       <main className="flex-1 px-6 py-8 md:px-10">
         <div className="mx-auto max-w-3xl">{children}</div>
