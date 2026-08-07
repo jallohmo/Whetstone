@@ -104,22 +104,36 @@ The app uses **Supabase Auth (email + password)**. Configure the project once:
      turn it OFF so signups get a session immediately (turn it back on before launch).
    - The built-in Supabase email sender is rate-limited — configure your own SMTP
      under **Project Settings → Auth → SMTP** before real signups.
-3. **First ops admin** — there is no public signup for `OPS_ADMIN`. Create one
-   with the service-role script (run locally or in a one-off job):
+3. **First ops admin** — there is no public signup for `OPS_ADMIN`. Two ways to
+   create one; both set the role in auth metadata (route gating) **and**
+   `public.users` (authoritative for RLS). The seeded fixture `ops@whetstone.dev`
+   has no password — make a real one below.
 
+   **Option A — from the Supabase website (no local setup):**
+   1. **Authentication → Users → Add user** → enter your email + a password, tick
+      **Auto Confirm User**, Create.
+   2. **SQL Editor → New query** → paste (with your email), Run:
+      ```sql
+      update public.users
+      set role = 'OPS_ADMIN'
+      where email = 'you@yourco.com';
+
+      update auth.users
+      set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"role":"OPS_ADMIN"}'::jsonb
+      where email = 'you@yourco.com';
+      ```
+   3. Log in at `/login` with that email + password.
+
+   **Option B — from a terminal (if you have the repo locally):**
    ```bash
    # reads config from .env.local automatically
    npx tsx scripts/create-ops-admin.ts ops@yourco.com 'a-strong-password'
    ```
-
-   (Requires `.env.local` to have `NEXT_PUBLIC_SUPABASE_URL`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`.) It sets the role in
-   both auth metadata (for route gating) and `public.users` (authoritative for
-   RLS). The dev-fixture ops user seeded earlier (`ops@whetstone.dev`) has no
-   password — use this script to make a real one.
+   (Requires `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`.)
 
 Roles: customers self-serve at `/signup`; advisors at `/advisor/apply` (public);
-ops only via the script above.
+ops only via one of the methods above.
 
 ## 6. Payments (Stripe Connect)
 
