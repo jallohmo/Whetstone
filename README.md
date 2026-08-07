@@ -115,6 +115,14 @@ then `npm run db:seed` and `npm run db:seed:demo`.
 
 `npm run typecheck` and `npm run lint` should pass before committing.
 
+## Deploying to Vercel
+
+The repo is deploy-ready (`vercel.json`, `postinstall: prisma generate`, and the
+serverless Prisma `binaryTargets`). Import `jallohmo/Whetstone` at
+**vercel.com/new**, add the environment variables, and deploy. Full steps, the
+env-var table (with this project's public values pre-filled), and a
+`scripts/vercel-env-sync.sh` helper are in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
 ## Deliberately deferred (per handover)
 
 - Endpoint-by-endpoint API contract (generate at build time once schema is locked)
