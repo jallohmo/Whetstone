@@ -14,11 +14,24 @@ export default async function BookingConfirmedPage({
 }) {
   const booking = await prisma.booking.findUnique({
     where: { id: params.bookingId },
-    include: { advisor: { include: { user: true } } },
+    include: {
+      advisor: { include: { user: true } },
+      sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
+    },
   });
   if (!booking) notFound();
 
   const advisorName = booking.advisor.user.email.split("@")[0];
+  const firstSession = booking.sessions[0];
+  const when = firstSession
+    ? new Intl.DateTimeFormat("en-AU", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(firstSession.scheduledAt)
+    : null;
 
   return (
     <div className="mx-auto max-w-xl">
@@ -28,6 +41,9 @@ export default async function BookingConfirmedPage({
           <CheckCircle2 className="text-green-500" size={20} />
           You&apos;re booked in with {advisorName}.
         </p>
+        {when && (
+          <p className="mt-2 text-body-lg font-semibold text-ink">{when}</p>
+        )}
         <p className="mt-2 text-body text-gray-600">
           Come with your actual problem — that&apos;s what this is for. You&apos;ll get a
           reminder and a video link before the session.

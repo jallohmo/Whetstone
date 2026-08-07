@@ -20,6 +20,7 @@ export async function createBooking(formData: FormData) {
   const advisorId = String(formData.get("advisorId") ?? "");
   const packageId = String(formData.get("packageId") ?? "");
   const needId = String(formData.get("needId") ?? "") || null;
+  const slotId = String(formData.get("slotId") ?? "") || null;
   const email =
     String(formData.get("email") ?? "").trim().toLowerCase() ||
     `guest+${randomUUID().slice(0, 8)}@whetstone.local`;
@@ -40,28 +41,49 @@ export async function createBooking(formData: FormData) {
     ? await resolveAuthedCustomer(current.id, current.email, industryId)
     : await resolveCustomer(email, industryId);
 
-  const booking = await prisma.booking.create({
-    data: {
-      customerId: customer.id,
-      advisorId,
-      packageId,
-      // copied-at-booking-time fields
-      sessionCount: pkg.sessionCount,
-      scopeDescription: pkg.scopeDescription,
-      priceCents: pkg.priceCents,
-      currency: pkg.currency,
-      status: "pending_payment",
-      insuranceCoverageConfirmed: false,
-    },
-  });
-
-  // Attach the guest need to this customer now that they've converted.
-  if (needId) {
-    await prisma.need.update({
-      where: { id: needId },
-      data: { customerId: customer.id },
-    });
+  // Validate the chosen availability slot (if any) up front.
+  const slot = slotId
+    ? await prisma.availabilitySlot.findUnique({ where: { id: slotId } })
+    : null;
+  if (slotId && (!slot || slot.advisorId !== advisorId || slot.isBooked)) {
+    throw new Error("That time is no longer available — please pick another.");
   }
+
+  const booking = await prisma.$transaction(async (tx) => {
+    const b = await tx.booking.create({
+      data: {
+        customerId: customer.id,
+        advisorId,
+        packageId,
+        // copied-at-booking-time fields
+        sessionCount: pkg.sessionCount,
+        scopeDescription: pkg.scopeDescription,
+        priceCents: pkg.priceCents,
+        currency: pkg.currency,
+        status: "pending_payment",
+        insuranceCoverageConfirmed: false,
+      },
+    });
+
+    // Schedule the first session at the chosen slot and reserve it. Multi-session
+    // packages schedule their remaining sessions later, by coordination.
+    if (slot) {
+      await tx.session.create({
+        data: { bookingId: b.id, scheduledAt: slot.startsAt, status: "scheduled" },
+      });
+      await tx.availabilitySlot.update({
+        where: { id: slot.id },
+        data: { isBooked: true },
+      });
+    }
+
+    // Attach the guest need to this customer now that they've converted.
+    if (needId) {
+      await tx.need.update({ where: { id: needId }, data: { customerId: customer.id } });
+    }
+
+    return b;
+  });
 
   redirect(`/bookings/${booking.id}/checkout`);
 }
