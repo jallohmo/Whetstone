@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { platformConfig } from "@/lib/platform-config";
 import { getCurrentUser } from "@/lib/auth";
 
 /**
@@ -86,43 +85,6 @@ export async function createBooking(formData: FormData) {
   });
 
   redirect(`/bookings/${booking.id}/checkout`);
-}
-
-/**
- * A6 — Confirm a booking after payment. Creates the held Payment, sets
- * insuranceCoverageConfirmed, and only THEN advances status to "confirmed"
- * (the coverage gate is enforced in application logic, per the schema note).
- * Real Stripe PaymentIntent id arrives from the webhook; a placeholder stands in.
- */
-export async function confirmBooking(formData: FormData) {
-  const bookingId = String(formData.get("bookingId") ?? "");
-  if (!bookingId) throw new Error("Missing booking id.");
-
-  const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
-
-  if (!platformConfig.insurance.active) {
-    throw new Error("Insurance coverage is not active — cannot confirm booking.");
-  }
-
-  await prisma.$transaction([
-    prisma.payment.upsert({
-      where: { bookingId },
-      update: {},
-      create: {
-        bookingId,
-        amountCents: booking.priceCents,
-        currency: booking.currency,
-        status: "held",
-        stripePaymentIntentId: `pi_placeholder_${bookingId}`,
-      },
-    }),
-    prisma.booking.update({
-      where: { id: bookingId },
-      data: { insuranceCoverageConfirmed: true, status: "confirmed" },
-    }),
-  ]);
-
-  redirect(`/bookings/${bookingId}/confirmed`);
 }
 
 /**

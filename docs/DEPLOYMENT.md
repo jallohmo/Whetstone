@@ -120,7 +120,34 @@ The app uses **Supabase Auth (email + password)**. Configure the project once:
 Roles: customers self-serve at `/signup`; advisors at `/advisor/apply` (public);
 ops only via the script above.
 
-## 6. Notes
+## 6. Payments (Stripe Connect)
+
+Payments use **Stripe Connect** (separate charges & transfers): the customer pays
+at checkout (funds held on the platform), and the advisor's cut is transferred to
+their connected account when the session completes (the customer's review triggers
+the release). Commission is `PLATFORM_COMMISSION_BPS` (default 1500 = 15%).
+
+**Without** `STRIPE_SECRET_KEY`, checkout falls back to recording a held payment
+directly so the full flow still works in dev — no card needed.
+
+To enable real payments:
+
+1. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (test keys to start).
+2. **Enable Connect** in the Stripe dashboard (Express accounts). Advisors connect
+   a payout account from **/advisor/earnings** ("Set up payouts" →
+   `startPayoutOnboarding`), which stores their `stripe_account_id`.
+3. **Webhook:** add an endpoint at `https://<your-domain>/api/stripe/webhook`
+   subscribed to **`checkout.session.completed`**, and put its signing secret in
+   `STRIPE_WEBHOOK_SECRET`. The route verifies the signature on the raw body and
+   fulfils the booking (held Payment + confirmed).
+4. Money movement: checkout → held; customer review → transfer to advisor
+   (released); ops can **Refund** from the dispute view (→ refunded + cancelled).
+
+Amounts are multi-currency throughout — each booking/payment carries its own ISO
+currency and Stripe is called in that currency.
+
+## 7. Notes
 
 - **Migrations:** applied to Supabase already. When you change the schema later,
   run `prisma migrate` against `DIRECT_URL` and apply any new `supabase/migrations/*.sql`

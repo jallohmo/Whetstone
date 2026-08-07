@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { PageHeader, Card, Button } from "@/components/ui";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
-import { confirmBooking } from "@/lib/actions/bookings";
+import { createCheckout } from "@/lib/actions/payments";
+import { stripeEnabled } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 // Screen 6 — Payment/checkout (A6). Insurance coverage is visible here, not
@@ -35,22 +36,22 @@ export default async function CheckoutPage({
         />
         <div className="mt-5 border-t border-dashed border-gray-300 pt-5">
           <p className="text-sm text-gray-500">
-            Card details are collected by Stripe. The charge is placed in the
-            booking&apos;s currency ({booking.currency}) and held via Stripe Connect
-            until the session completes.
+            {stripeEnabled
+              ? `You'll pay securely on Stripe in the booking's currency (${booking.currency}). Funds are held and released to your advisor after the session.`
+              : `Payments aren't configured in this environment — confirming records a held payment so you can walk the full flow.`}
           </p>
-          <form action={confirmBooking} className="mt-4">
+          <form action={createCheckout} className="mt-4">
             <input type="hidden" name="bookingId" value={booking.id} />
             <Button type="submit" className="w-full">
-              Pay and confirm booking
+              {stripeEnabled ? "Continue to secure payment" : "Confirm booking"}
             </Button>
           </form>
         </div>
       </Card>
 
       <p className="mt-4 text-sm text-gray-400">
-        Real card capture wires to Stripe Elements; the held-funds PaymentIntent is
-        created here and reconciled by the Stripe webhook route handler.
+        Held on the platform via Stripe, reconciled by the webhook, and released to
+        the advisor (minus commission) once you&apos;ve had your session.
       </p>
     </div>
   );

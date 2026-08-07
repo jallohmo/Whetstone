@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { resolveDispute } from "@/lib/actions/disputes";
+import { refundBooking } from "@/lib/actions/payments";
 import { Money } from "@/components/shared/Money";
 
 // Screen 18 — Dispute/flag resolution. Booking details + full message history
@@ -63,6 +64,13 @@ export default async function OpsDisputePage({
             {resolved ? "This dispute is resolved." : "Escalated — handle out of band."}
           </p>
         )}
+
+        <form action={refundBooking} className="mt-3 border-t border-gray-150 pt-3">
+          <input type="hidden" name="bookingId" value={b.id} />
+          <button className="rounded-sm border border-red-500/40 px-3 py-1.5 text-[13px] font-semibold text-red-700 hover:bg-red-100">
+            Refund customer
+          </button>
+        </form>
       </section>
 
       <section className="rounded-md border border-gray-300 bg-white p-4">

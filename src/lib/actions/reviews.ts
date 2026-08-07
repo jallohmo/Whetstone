@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { releasePaymentForBooking } from "@/lib/actions/payments";
 
 /**
  * Screen 9 (B3, C2). Post-session review + outcome survey. Writes Review (rating
@@ -49,6 +50,9 @@ export async function submitReview(formData: FormData) {
     }),
     prisma.booking.update({ where: { id: bookingId }, data: { status: "completed" } }),
   ]);
+
+  // Session done -> release the held funds to the advisor (minus commission).
+  await releasePaymentForBooking(bookingId);
 
   revalidatePath(`/advisors/${booking.advisorId}`);
   redirect(`/bookings/${bookingId}/confirmed`);
