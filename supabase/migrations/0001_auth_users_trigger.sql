@@ -16,7 +16,8 @@ as $$
 begin
   insert into public.users (id, email, role, created_at)
   values (
-    new.id,
+    -- public.users.id is TEXT (Prisma cuid mirror); auth.users.id is UUID.
+    new.id::text,
     new.email,
     -- Default any signup without an explicit valid role to CUSTOMER.
     -- OPS_ADMIN can NEVER be self-assigned here — it is only ever set via the
@@ -45,7 +46,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select role from public.users where id = auth.uid();
+  select role from public.users where id = auth.uid()::text;
 $$;
 
 create or replace function public.is_ops()

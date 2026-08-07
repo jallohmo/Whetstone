@@ -3,7 +3,7 @@
 -- application-layer checks. Written to match the minimum policies in 05b §2.
 --
 -- Table/column names are the snake_case ones Prisma emits (see schema.prisma @@map).
--- Advisor-profile ownership etc. resolve through the owning user_id -> auth.uid().
+-- Advisor-profile ownership etc. resolve through the owning user_id -> auth.uid()::text.
 
 -- Enable RLS everywhere that holds anything sensitive.
 alter table public.users                enable row level security;
@@ -21,14 +21,14 @@ alter table public.disputes             enable row level security;
 -- users: read/update own row; OPS reads all; role column never client-writable.
 -- ---------------------------------------------------------------------------
 create policy users_select_self on public.users
-  for select using (id = auth.uid() or public.is_ops());
+  for select using (id = auth.uid()::text or public.is_ops());
 
 -- Update own row but NOT the role column (privilege-escalation guard). The role
 -- is only ever written by the security-definer trigger / service role, both of
 -- which bypass RLS, so no UPDATE policy exposes role to clients.
 create policy users_update_self on public.users
-  for update using (id = auth.uid())
-  with check (id = auth.uid() and role = (select role from public.users where id = auth.uid()));
+  for update using (id = auth.uid()::text)
+  with check (id = auth.uid()::text and role = (select role from public.users where id = auth.uid()::text));
 
 -- ---------------------------------------------------------------------------
 -- advisor_profiles: public reads ONLY where verified; owner reads/updates own
@@ -37,15 +37,15 @@ create policy users_update_self on public.users
 create policy advisor_public_read on public.advisor_profiles
   for select using (
     verification_status = 'VERIFIED'
-    or user_id = auth.uid()
+    or user_id = auth.uid()::text
     or public.is_ops()
   );
 
 create policy advisor_owner_update on public.advisor_profiles
-  for update using (user_id = auth.uid() or public.is_ops());
+  for update using (user_id = auth.uid()::text or public.is_ops());
 
 create policy advisor_owner_insert on public.advisor_profiles
-  for insert with check (user_id = auth.uid());
+  for insert with check (user_id = auth.uid()::text);
 
 -- ---------------------------------------------------------------------------
 -- verification_records: OPS only, both read and write. Internal evidence —
@@ -62,13 +62,13 @@ create policy needs_customer_rw on public.needs
   for all using (
     public.is_ops()
     or customer_id in (
-      select id from public.customer_profiles where user_id = auth.uid()
+      select id from public.customer_profiles where user_id = auth.uid()::text
     )
   )
   with check (
     public.is_ops()
     or customer_id in (
-      select id from public.customer_profiles where user_id = auth.uid()
+      select id from public.customer_profiles where user_id = auth.uid()::text
     )
   );
 
@@ -78,7 +78,7 @@ create policy needs_matched_advisor_read on public.needs
       select 1
       from public.match_decisions md
       join public.advisor_profiles ap on ap.id = md.advisor_chosen_id
-      where md.need_id = needs.id and ap.user_id = auth.uid()
+      where md.need_id = needs.id and ap.user_id = auth.uid()::text
     )
   );
 
@@ -105,7 +105,7 @@ as $$
     left join public.customer_profiles cp on cp.id = b.customer_id
     left join public.advisor_profiles  ap on ap.id = b.advisor_id
     where b.id = _booking_id
-      and (cp.user_id = auth.uid() or ap.user_id = auth.uid())
+      and (cp.user_id = auth.uid()::text or ap.user_id = auth.uid()::text)
   );
 $$;
 
@@ -122,7 +122,7 @@ create policy messages_parties_read on public.messages
   for select using (public.is_ops() or public.is_booking_party(booking_id));
 
 create policy messages_parties_write on public.messages
-  for insert with check (sender_id = auth.uid() and public.is_booking_party(booking_id));
+  for insert with check (sender_id = auth.uid()::text and public.is_booking_party(booking_id));
 
 -- ---------------------------------------------------------------------------
 -- disputes: OPS read/write; the two parties on the booking get read-only.

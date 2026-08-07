@@ -12,7 +12,7 @@ values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
 -- Convention: object path is prefixed with the owner's user id, e.g.
---   advisor-credentials/<auth.uid()>/license.pdf
+--   advisor-credentials/<auth.uid()::text>/license.pdf
 -- so ownership is the first path segment.
 
 -- advisor-credentials: read own or OPS; write own.

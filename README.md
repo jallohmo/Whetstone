@@ -70,20 +70,48 @@ Money is always stored as an integer **minor-unit amount + ISO 4217 currency cod
 default. Formatting happens only at the display edge via `lib/currency.ts` / the `Money`
 component. Add a currency by adding one row to `SUPPORTED_CURRENCIES`.
 
+## Database — already provisioned on Supabase
+
+The backend is wired to a dedicated Supabase project (fully isolated from any
+other app):
+
+| | |
+|---|---|
+| Project | **whetstone** · ref `yywcerybuaxndsvdkjiw` |
+| Region | ap-southeast-2 (Sydney) · Postgres 17 |
+| URL | `https://yywcerybuaxndsvdkjiw.supabase.co` |
+
+Already applied to that project (via migrations, in order):
+1. **Schema** — all 16 tables + the advisor↔specialty join + enums
+2. **Auth** — `auth.users → public.users` trigger + `current_user_role()` /
+   `is_ops()` / `is_booking_party()` helpers (ids cast `auth.uid()::text` since
+   `public.users.id` is a TEXT cuid mirror)
+3. **RLS** — per-table policies (05b §2)
+4. **Storage** — `advisor-credentials` (private) + `avatars` (public) buckets
+5. **Seed** — 15 industries, 60 sub-specialties, 2 packages, + dev-fixture
+   verified advisors and an ops admin
+
 ## Getting started
+
+`.env.example` already carries this project's real URL + anon key (public-safe).
+You only need to add **two secrets** from the Supabase dashboard:
 
 ```bash
 npm install
-cp .env.example .env.local        # fill in Supabase + Stripe values
+cp .env.example .env.local
+# In .env.local, fill the two placeholders:
+#   DATABASE_URL / DIRECT_URL -> [YOUR-DB-PASSWORD]  (Settings -> Database, ORM/Prisma tab)
+#   SUPABASE_SERVICE_ROLE_KEY -> service_role key    (Settings -> API)
 
 npm run prisma:generate
-npm run prisma:migrate            # creates tables in Supabase Postgres
-# then apply the Supabase-only SQL (auth trigger, RLS, storage) via the Supabase CLI:
-#   supabase db push   (or run the files in supabase/migrations/ in order)
-npm run db:seed                   # taxonomy + packages
-
 npm run dev                       # http://localhost:3000
 ```
+
+The schema, RLS, and seed are **already live** — you do not re-run
+`prisma migrate` or `db:seed` against this project unless you're changing the
+schema. For a *fresh/other* Supabase project, apply `supabase/migrations/` in
+order (or `prisma migrate` for tables + `supabase db push` for the SQL policies),
+then `npm run db:seed` and `npm run db:seed:demo`.
 
 `npm run typecheck` and `npm run lint` should pass before committing.
 
