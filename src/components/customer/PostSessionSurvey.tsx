@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Star } from "lucide-react";
 import { Button, Field, Textarea } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { submitReview } from "@/lib/actions/reviews";
 
 /**
  * Screen 9 / PostSessionSurvey (B3, C2). Quick rating + structured questions
@@ -17,12 +19,12 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
   const [rebook, setRebook] = useState<boolean | null>(null);
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        // TODO(build-time): Server Action writes Review + OutcomeSurvey for bookingId.
-      }}
-    >
+    <form action={submitReview}>
+      <input type="hidden" name="bookingId" value={bookingId} />
+      <input type="hidden" name="rating" value={rating} />
+      <input type="hidden" name="problemAddressed" value={addressed} />
+      <input type="hidden" name="wouldRebook" value={rebook === null ? "" : String(rebook)} />
+
       <Field label="How was it?">
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
@@ -89,9 +91,16 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
         <Textarea name="freeTextContext" rows={3} placeholder="Context that would help us match better next time…" />
       </Field>
 
-      <Button type="submit" disabled={!rating || !addressed || rebook === null}>
-        Submit review
-      </Button>
+      <SubmitReviewButton disabled={!rating || !addressed || rebook === null} />
     </form>
+  );
+}
+
+function SubmitReviewButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={disabled || pending}>
+      {pending ? "Submitting…" : "Submit review"}
+    </Button>
   );
 }
