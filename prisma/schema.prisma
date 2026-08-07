@@ -162,8 +162,8 @@ model Package {
   sessionCount     Int       @map("session_count")
   scopeDescription String    @map("scope_description")
   priceCents       Int       @map("price_cents")
-  // Multi-currency: platform serves customers worldwide. USD is the default.
-  currency         String    @default("USD") // ISO 4217
+  // Multi-currency: platform serves customers worldwide. AUD is the default.
+  currency         String    @default("AUD") // ISO 4217
   active           Boolean   @default(true)
   bookings         Booking[]
 
@@ -183,7 +183,7 @@ model Booking {
   sessionCount               Int             @map("session_count")
   scopeDescription           String          @map("scope_description")
   priceCents                 Int             @map("price_cents") // copied at booking time
-  currency                   String          @default("USD") @map("currency") // copied at booking time
+  currency                   String          @default("AUD") @map("currency") // copied at booking time
   status                     String          @default("pending_payment")
   // "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed"
   // Must be true before status can become "confirmed" — enforced in app logic, not just schema.
@@ -231,7 +231,7 @@ model Payment {
   bookingId             String  @unique @map("booking_id")
   booking               Booking @relation(fields: [bookingId], references: [id])
   amountCents           Int     @map("amount_cents")
-  currency              String  @default("USD") // ISO 4217, matches the booking
+  currency              String  @default("AUD") // ISO 4217, matches the booking
   status                String  @default("held") // "held" | "released" | "refunded" | "partial_refund"
   stripePaymentIntentId String  @map("stripe_payment_intent_id")
   // Platform commission withheld from the gross, and the Connect transfer that

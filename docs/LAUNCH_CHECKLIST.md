@@ -27,7 +27,7 @@ Complete list of what the code actually reads (`process.env.*` + Prisma `env()`)
 | `STRIPE_SECRET_KEY` | Payments (without it: held-payment fallback, no card) |
 | `STRIPE_WEBHOOK_SECRET` | Booking fulfilment via webhook (the `whsec_…` from the endpoint) |
 | `DAILY_API_KEY` | Video calls (Daily.co) |
-| `NEXT_PUBLIC_DEFAULT_CURRENCY` | Fallback currency (code default: USD) |
+| `NEXT_PUBLIC_DEFAULT_CURRENCY` | Fallback currency (code default: AUD) |
 | `PLATFORM_COMMISSION_BPS` | Commission (code default: 1500 = 15%) |
 | `INSURANCE_COVERAGE_ACTIVE`, `INSURANCE_COVERAGE_STATEMENT` | Insurance statement config |
 

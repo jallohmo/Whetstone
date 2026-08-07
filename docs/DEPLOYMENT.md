@@ -53,7 +53,7 @@ the two secrets must come from the Supabase dashboard.
 | `DATABASE_URL` | **secret** | pooled string, port **6543**, `?pgbouncer=true` — see below |
 | `DIRECT_URL` | **secret** | direct/session string, port **5432** — see below |
 | `SUPABASE_SERVICE_ROLE_KEY` | **secret** | Supabase → Settings → API → `service_role` |
-| `NEXT_PUBLIC_DEFAULT_CURRENCY` | public | `USD` |
+| `NEXT_PUBLIC_DEFAULT_CURRENCY` | public | `AUD` |
 | `PLATFORM_COMMISSION_BPS` | public | `1500` |
 | `INSURANCE_COVERAGE_ACTIVE` | public | `true` |
 | `INSURANCE_COVERAGE_STATEMENT` | public | your coverage sentence |
