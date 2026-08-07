@@ -14,21 +14,33 @@ export interface CurrentUser {
  * public.users (the authoritative, server-written mirror) — never from
  * client-settable auth metadata. Wrapped in React cache() so multiple callers in
  * one render share a single lookup.
+ *
+ * Fails CLOSED: any infrastructure error (Supabase auth unreachable, database
+ * connection refused/misconfigured) is logged and treated as "no session" rather
+ * than allowed to throw. This keeps a DB blip from crashing every authenticated
+ * render into an opaque "server-side exception" — callers/route gates see null and
+ * degrade to the logged-out path (which denies access), never grant it by accident.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  // Authoritative role/identity from our mirror table.
-  const row = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { id: true, email: true, role: true },
-  });
-  if (!row) return null;
-  return row;
+    // Authoritative role/identity from our mirror table.
+    const row = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, email: true, role: true },
+    });
+    return row ?? null;
+  } catch (err) {
+    // Surfaced in server logs (e.g. Vercel runtime logs) so the real cause is
+    // still diagnosable — the UI just degrades instead of white-screening.
+    console.error("getCurrentUser: failed to resolve current user —", err);
+    return null;
+  }
 });
 
 /** Home route for a role after login. */
