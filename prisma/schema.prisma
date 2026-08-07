@@ -1,0 +1,281 @@
+// Whetstone data schema.
+// Source of truth: 05-technical-foundation-stack-schema-auth.md (+ 05b addendum).
+// Prisma manages table structure/migrations; Supabase RLS policies + auth triggers
+// live separately under supabase/migrations/ (Prisma has no native RLS concept).
+//
+// Tables and columns are mapped to snake_case so the hand-written RLS SQL in
+// supabase/migrations/ references the same identifiers Postgres actually has.
+
+generator client {
+  provider = "prisma-client-js"
+  // "native" for local dev; "rhel-openssl-3.0.x" is the engine Vercel's
+  // serverless runtime (Amazon Linux) needs — without it, deployed functions
+  // fail with "Query engine binary not found".
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADVISOR
+  OPS_ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  NEEDS_MORE_INFO
+}
+
+model User {
+  // id mirrors the Supabase auth.users id (set by the auth trigger, not cuid()).
+  id              String           @id
+  email           String           @unique
+  role            UserRole
+  createdAt       DateTime         @default(now()) @map("created_at")
+  advisorProfile  AdvisorProfile?
+  customerProfile CustomerProfile?
+
+  @@map("users")
+}
+
+model IndustryTaxonomy {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  // self-relation for industry > sub-specialty structure
+  parentId String? @map("parent_id")
+  parent   IndustryTaxonomy?  @relation("TaxonomyHierarchy", fields: [parentId], references: [id])
+  children IndustryTaxonomy[] @relation("TaxonomyHierarchy")
+
+  customerProfiles CustomerProfile[]
+  needs            Need[]
+  advisors         AdvisorProfile[]  @relation("AdvisorSpecialties")
+
+  @@index([parentId])
+  @@map("industry_taxonomy")
+}
+
+model AdvisorProfile {
+  id                      String             @id @default(cuid())
+  userId                  String             @unique @map("user_id")
+  user                    User               @relation(fields: [userId], references: [id])
+  bio                     String
+  headline                String? // short RelevanceExplainer seed line
+  yearsExperience         Int                @map("years_experience")
+  verificationStatus      VerificationStatus @default(PENDING) @map("verification_status")
+  identityCheckPassed     Boolean            @default(false) @map("identity_check_passed")
+  insuranceCoverageActive Boolean            @default(false) @map("insurance_coverage_active")
+  avatarUrl               String?            @map("avatar_url")
+  // Stripe Connect (Express) account that receives payouts. Set during payout onboarding.
+  stripeAccountId         String?            @map("stripe_account_id")
+  specialtyTags           IndustryTaxonomy[] @relation("AdvisorSpecialties")
+  availabilitySlots       AvailabilitySlot[]
+  verificationRecords     VerificationRecord[]
+  bookings                Booking[]
+  createdAt               DateTime           @default(now()) @map("created_at")
+
+  @@index([verificationStatus])
+  @@map("advisor_profiles")
+}
+
+model VerificationRecord {
+  id         String         @id @default(cuid())
+  advisorId  String         @map("advisor_id")
+  advisor    AdvisorProfile @relation(fields: [advisorId], references: [id])
+  type       String // "reference_call" | "license_check" | "id_check" — evidence trail (B2)
+  notes      String
+  reviewedBy String         @map("reviewed_by") // ops staff user id
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@index([advisorId])
+  @@map("verification_records")
+}
+
+model AvailabilitySlot {
+  id        String         @id @default(cuid())
+  advisorId String         @map("advisor_id")
+  advisor   AdvisorProfile @relation(fields: [advisorId], references: [id])
+  startsAt  DateTime       @map("starts_at")
+  endsAt    DateTime       @map("ends_at")
+  isBooked  Boolean        @default(false) @map("is_booked")
+
+  @@index([advisorId])
+  @@map("availability_slots")
+}
+
+model CustomerProfile {
+  id           String           @id @default(cuid())
+  userId       String           @unique @map("user_id")
+  user         User             @relation(fields: [userId], references: [id])
+  businessName String           @map("business_name")
+  industryId   String           @map("industry_id")
+  industry     IndustryTaxonomy @relation(fields: [industryId], references: [id])
+  needs        Need[]
+  bookings     Booking[]
+
+  @@map("customer_profiles")
+}
+
+model Need {
+  id             String           @id @default(cuid())
+  // Nullable to support the "guest need" state (A2): a need can be posted before
+  // a full account exists, then attached to a CustomerProfile at booking time.
+  customerId     String?          @map("customer_id")
+  customer       CustomerProfile? @relation(fields: [customerId], references: [id])
+  guestEmail     String?          @map("guest_email")
+  industryId     String           @map("industry_id")
+  industry       IndustryTaxonomy @relation(fields: [industryId], references: [id])
+  problemArea    String           @map("problem_area")
+  description    String
+  status         String           @default("open") // "open" | "matched" | "closed"
+  createdAt      DateTime         @default(now()) @map("created_at")
+  matchDecisions MatchDecision[]
+
+  @@index([status])
+  @@map("needs")
+}
+
+model MatchDecision {
+  id                 String   @id @default(cuid())
+  needId             String   @map("need_id")
+  need               Need     @relation(fields: [needId], references: [id])
+  advisorsConsidered String[] @map("advisors_considered") // advisor profile ids — structured, not free text
+  advisorChosenId    String   @map("advisor_chosen_id")
+  reason             String
+  decidedBy          String   @map("decided_by") // ops staff user id
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([needId])
+  @@map("match_decisions")
+}
+
+model Package {
+  id               String    @id @default(cuid())
+  name             String
+  sessionCount     Int       @map("session_count")
+  scopeDescription String    @map("scope_description")
+  priceCents       Int       @map("price_cents")
+  // Multi-currency: platform serves customers worldwide. USD is the default.
+  currency         String    @default("USD") // ISO 4217
+  active           Boolean   @default(true)
+  bookings         Booking[]
+
+  @@map("packages")
+}
+
+model Booking {
+  id                         String          @id @default(cuid())
+  customerId                 String          @map("customer_id")
+  customer                   CustomerProfile @relation(fields: [customerId], references: [id])
+  advisorId                  String          @map("advisor_id")
+  advisor                    AdvisorProfile  @relation(fields: [advisorId], references: [id])
+  packageId                  String          @map("package_id")
+  package                    Package         @relation(fields: [packageId], references: [id])
+  // Copied at booking time — protects the bounded-scope guarantee even if the
+  // package definition changes later (liability-containment design decision).
+  sessionCount               Int             @map("session_count")
+  scopeDescription           String          @map("scope_description")
+  priceCents                 Int             @map("price_cents") // copied at booking time
+  currency                   String          @default("USD") @map("currency") // copied at booking time
+  status                     String          @default("pending_payment")
+  // "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed"
+  // Must be true before status can become "confirmed" — enforced in app logic, not just schema.
+  insuranceCoverageConfirmed Boolean         @default(false) @map("insurance_coverage_confirmed")
+  createdAt                  DateTime        @default(now()) @map("created_at")
+  sessions                   Session[]
+  payment                    Payment?
+  review                     Review?
+  outcomeSurvey              OutcomeSurvey?
+  disputes                   Dispute[]
+  messages                   Message[]
+
+  @@index([customerId])
+  @@index([advisorId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  bookingId    String   @map("booking_id")
+  booking      Booking  @relation(fields: [bookingId], references: [id])
+  scheduledAt  DateTime @map("scheduled_at")
+  status       String   @default("scheduled") // "scheduled" | "completed" | "no_show" | "rescheduled"
+  videoCallUrl String?  @map("video_call_url")
+
+  @@index([bookingId])
+  @@map("sessions")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  bookingId String   @map("booking_id")
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  senderId  String   @map("sender_id") // user id
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("messages")
+}
+
+model Payment {
+  id                    String  @id @default(cuid())
+  bookingId             String  @unique @map("booking_id")
+  booking               Booking @relation(fields: [bookingId], references: [id])
+  amountCents           Int     @map("amount_cents")
+  currency              String  @default("USD") // ISO 4217, matches the booking
+  status                String  @default("held") // "held" | "released" | "refunded" | "partial_refund"
+  stripePaymentIntentId String  @map("stripe_payment_intent_id")
+  // Platform commission withheld from the gross, and the Connect transfer that
+  // pays the advisor out on release.
+  platformFeeCents      Int     @default(0) @map("platform_fee_cents")
+  stripeTransferId      String? @map("stripe_transfer_id")
+
+  @@map("payments")
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique @map("booking_id")
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  rating        Int
+  writtenReview String?  @map("written_review")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("reviews")
+}
+
+model OutcomeSurvey {
+  id               String   @id @default(cuid())
+  bookingId        String   @unique @map("booking_id")
+  booking          Booking  @relation(fields: [bookingId], references: [id])
+  problemAddressed String   @map("problem_addressed") // "yes" | "partially" | "no"
+  wouldRebook      Boolean  @map("would_rebook")
+  freeTextContext  String?  @map("free_text_context")
+  // Nullable now, populated once Phase 2 categorisation exists — added from day one on purpose.
+  problemCategory  String?  @map("problem_category")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("outcome_surveys")
+}
+
+model Dispute {
+  id        String   @id @default(cuid())
+  bookingId String   @map("booking_id")
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  raisedBy  String   @map("raised_by") // user id
+  status    String   @default("open") // "open" | "resolved" | "escalated"
+  notes     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("disputes")
+}

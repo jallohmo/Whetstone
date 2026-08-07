@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Fonts: General Sans (UI) + JetBrains Mono (amounts, dates, ops).
+ * Self-host under /public/fonts and add @font-face here, or wire up next/font.
+ * Falls back to system sans/mono until then — see 06-design-tokens.ts.
+ */
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: theme("fontFamily.sans");
+  color: theme("colors.ink");
+  line-height: 1.45;
+}
+
+/* Dashed dividers inside cards use gray300 per the design system. */
+.divider-dashed {
+  border-top: 1px dashed theme("colors.gray.300");
+}
