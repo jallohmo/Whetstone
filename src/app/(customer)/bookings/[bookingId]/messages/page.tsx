@@ -3,6 +3,7 @@ import { Video } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { MessageComposer } from "@/components/booking/MessageComposer";
 import { startVideoCall } from "@/lib/actions/video";
+import { raiseDispute } from "@/lib/actions/disputes";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
 import { prisma } from "@/lib/prisma";
@@ -14,8 +15,10 @@ export const dynamic = "force-dynamic";
 
 export default async function MessagesPage({
   params,
+  searchParams,
 }: {
   params: { bookingId: string };
+  searchParams: { reported?: string };
 }) {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/bookings/${params.bookingId}/messages`);
@@ -43,6 +46,12 @@ export default async function MessagesPage({
   return (
     <div className="mx-auto max-w-xl">
       <PageHeader title="Messages" subtitle="Keep it here so everything stays on the record for your session." />
+
+      {searchParams.reported && (
+        <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
+          Thanks — our team has your report and will be in touch. The booking is on hold.
+        </div>
+      )}
 
       {nextSession && isParty && (
         <Card className="mb-page-gap flex items-center justify-between py-4">
@@ -90,6 +99,27 @@ export default async function MessagesPage({
           </p>
         )}
       </Card>
+
+      {isParty && (
+        <details className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-600">
+            Something went wrong? Report a problem
+          </summary>
+          <form action={raiseDispute} className="mt-3">
+            <input type="hidden" name="bookingId" value={params.bookingId} />
+            <textarea
+              name="notes"
+              rows={3}
+              required
+              placeholder="Tell us what happened — our team will step in."
+              className="w-full rounded-sm border border-gray-200 px-3 py-2 text-body outline-none focus:border-ink"
+            />
+            <button type="submit" className="mt-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white shadow-ink-glow">
+              Send report
+            </button>
+          </form>
+        </details>
+      )}
     </div>
   );
 }
