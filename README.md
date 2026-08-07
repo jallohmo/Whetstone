@@ -15,7 +15,7 @@ real domain experience.
 |---|---|
 | **Product name** | **Whetstone** |
 | **Launch breadth** | **All industries at once** (broad taxonomy, seeded as data) |
-| **Currency** | **Multi-currency**, `USD` default — global from day one |
+| **Currency** | **Multi-currency**, `AUD` default — global from day one |
 | Insurance | Static coverage statement from config (negotiated blanket policy), not a live API |
 
 ## Stack
@@ -66,7 +66,7 @@ and a `ScaffoldNote` marking exactly what to connect at build time.
 ## Multi-currency
 
 Money is always stored as an integer **minor-unit amount + ISO 4217 currency code**
-(never a float or formatted string) on `Package`, `Booking`, and `Payment`. `USD` is the
+(never a float or formatted string) on `Package`, `Booking`, and `Payment`. `AUD` is the
 default. Formatting happens only at the display edge via `lib/currency.ts` / the `Money`
 component. Add a currency by adding one row to `SUPPORTED_CURRENCIES`.
 

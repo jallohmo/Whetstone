@@ -3,14 +3,14 @@
  *
  * Whetstone is a global platform: prices are stored in minor units (cents) with an
  * ISO 4217 currency code alongside every monetary amount (Package, Booking, Payment).
- * USD is the default/fallback, but any supported currency can be used end-to-end.
+ * AUD is the default/fallback, but any supported currency can be used end-to-end.
  *
  * Money is always stored as an integer minor-unit amount + a currency code. Never
  * store a formatted string or a float. Formatting happens at the display edge only.
  */
 
 export const DEFAULT_CURRENCY = (
-  process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || "USD"
+  process.env.NEXT_PUBLIC_DEFAULT_CURRENCY || "AUD"
 ).toUpperCase();
 
 export interface SupportedCurrency {

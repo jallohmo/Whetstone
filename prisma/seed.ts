@@ -36,8 +36,8 @@ const TAXONOMY: Record<string, string[]> = {
 };
 
 const PACKAGES = [
-  { name: "Single session", sessionCount: 1, scopeDescription: "One focused 60-minute session on a single defined problem.", priceCents: 12000, currency: "USD" },
-  { name: "Three-session engagement", sessionCount: 3, scopeDescription: "Three sessions over four weeks — diagnose, plan, then review.", priceCents: 30000, currency: "USD" },
+  { name: "Single session", sessionCount: 1, scopeDescription: "One focused 60-minute session on a single defined problem.", priceCents: 12000, currency: "AUD" },
+  { name: "Three-session engagement", sessionCount: 3, scopeDescription: "Three sessions over four weeks — diagnose, plan, then review.", priceCents: 30000, currency: "AUD" },
 ];
 
 async function main() {

@@ -4,7 +4,7 @@ import { PageHeader, Card, Button } from "@/components/ui";
 import { Money } from "@/components/shared/Money";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { splitCommission } from "@/lib/currency";
+import { splitCommission, DEFAULT_CURRENCY } from "@/lib/currency";
 import { stripeEnabled } from "@/lib/stripe";
 import { startPayoutOnboarding } from "@/lib/actions/connect";
 
@@ -68,7 +68,7 @@ export default async function EarningsPage() {
         <p className="text-sm text-gray-500">Coming your way</p>
         {pendingByCcy.size === 0 ? (
           <p className="mt-1 text-display3 text-ink">
-            <Money amountMinor={0} currency="USD" />
+            <Money amountMinor={0} currency={DEFAULT_CURRENCY} />
           </p>
         ) : (
           <div className="mt-1 flex flex-wrap gap-4">
