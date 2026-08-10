@@ -38,6 +38,9 @@ model User {
   id              String           @id
   email           String           @unique
   role            UserRole
+  // Per-key notification toggles (role-agnostic map, e.g. {"newMessages": true}).
+  // Defaults live in code (lib/notifications) so an absent value reads as the default.
+  notificationPrefs Json?          @map("notification_prefs")
   createdAt       DateTime         @default(now()) @map("created_at")
   advisorProfile  AdvisorProfile?
   customerProfile CustomerProfile?
@@ -73,6 +76,10 @@ model AdvisorProfile {
   identityCheckPassed     Boolean            @default(false) @map("identity_check_passed")
   insuranceCoverageActive Boolean            @default(false) @map("insurance_coverage_active")
   avatarUrl               String?            @map("avatar_url")
+  // Account & profile (screen 14c): release held earnings weekly (payout schedule
+  // preference), and a soft-deactivation timestamp for "leave the platform".
+  weeklyPayouts           Boolean            @default(true) @map("weekly_payouts")
+  deactivatedAt           DateTime?          @map("deactivated_at")
   // Stripe Connect (Express) account that receives payouts. Set during payout onboarding.
   stripeAccountId         String?            @map("stripe_account_id")
   specialtyTags           IndustryTaxonomy[] @relation("AdvisorSpecialties")
@@ -117,6 +124,13 @@ model CustomerProfile {
   businessName String           @map("business_name")
   industryId   String           @map("industry_id")
   industry     IndustryTaxonomy @relation(fields: [industryId], references: [id])
+  // Account & profile (screen 9c). All nullable — collected on the account page,
+  // not required at signup. customer_profiles is owner+OPS-only under RLS, so
+  // these (incl. stripeCustomerId) are never publicly exposed.
+  fullName         String? @map("full_name")
+  phone            String? @map("phone")
+  avatarUrl        String? @map("avatar_url")
+  stripeCustomerId String? @map("stripe_customer_id")
   needs        Need[]
   bookings     Booking[]
 
