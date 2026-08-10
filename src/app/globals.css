@@ -8,11 +8,10 @@
  * JetBrains Mono (amounts, dates, metrics) ships in this repo under
  * /public/fonts/jetbrains-mono and is live now.
  *
- * General Sans (UI/display) is Fontshare-licensed and is NOT redistributed here.
- * The @font-face rules below point at /public/fonts/general-sans/*.woff2; until
- * those files are added the browser falls back to the system sans stack declared
- * in tailwind.config.ts (fontFamily.sans). Dropping the four woff2 files into that
- * folder — see its README — activates General Sans with no code change.
+ * General Sans (UI/display) is Fontshare-licensed. The woff2 files live in
+ * /public/fonts/general-sans (Regular/Medium/Semibold/Bold → 400/500/600/700).
+ * If they are ever removed, the browser falls back to the system sans stack
+ * declared in tailwind.config.ts (fontFamily.sans).
  */
 
 /* ---- JetBrains Mono (self-hosted) ---- */
@@ -45,34 +44,34 @@
   src: url("/fonts/jetbrains-mono/JetBrainsMono-700.woff2") format("woff2");
 }
 
-/* ---- General Sans (drop-in slot — see public/fonts/general-sans/README.md) ---- */
+/* ---- General Sans (self-hosted) ---- */
 @font-face {
   font-family: "General Sans";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("/fonts/general-sans/GeneralSans-400.woff2") format("woff2");
+  src: url("/fonts/general-sans/GeneralSans-Regular.woff2") format("woff2");
 }
 @font-face {
   font-family: "General Sans";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("/fonts/general-sans/GeneralSans-500.woff2") format("woff2");
+  src: url("/fonts/general-sans/GeneralSans-Medium.woff2") format("woff2");
 }
 @font-face {
   font-family: "General Sans";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("/fonts/general-sans/GeneralSans-600.woff2") format("woff2");
+  src: url("/fonts/general-sans/GeneralSans-Semibold.woff2") format("woff2");
 }
 @font-face {
   font-family: "General Sans";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url("/fonts/general-sans/GeneralSans-700.woff2") format("woff2");
+  src: url("/fonts/general-sans/GeneralSans-Bold.woff2") format("woff2");
 }
 
 :root {
