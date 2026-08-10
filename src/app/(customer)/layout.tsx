@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { Avatar } from "@/components/ui/Avatar";
+import { ProfileMenu } from "@/components/shared/ProfileMenu";
 
 /**
  * Customer shell (Screens 1-9). Canvas gray100, centered white "pill" top bar,
@@ -30,10 +29,12 @@ export default async function CustomerLayout({
           </Link>
           <nav className="flex items-center gap-1 text-sm">
             {user ? (
-              <>
-                <SignOutButton className="rounded-md px-3 py-2 font-medium text-gray-600 transition hover:bg-gray-100" />
-                <Avatar name={user.email} size={32} className="ml-1" />
-              </>
+              <ProfileMenu
+                role="customer"
+                displayName={user.fullName ?? user.email.split("@")[0]}
+                email={user.email}
+                avatarUrl={user.avatarUrl}
+              />
             ) : (
               <>
                 <Link
