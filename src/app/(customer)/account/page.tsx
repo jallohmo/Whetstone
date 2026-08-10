@@ -9,6 +9,7 @@ import { NotificationSettings } from "@/components/account/NotificationSettings"
 import { PaymentMethods } from "@/components/account/PaymentMethods";
 import { DangerZone } from "@/components/account/DangerZone";
 import { getCurrentUser } from "@/lib/auth";
+import { getMfaStatus } from "@/lib/mfa";
 import { prisma } from "@/lib/prisma";
 import { keysForRole, resolvePrefs } from "@/lib/notifications";
 
@@ -36,6 +37,7 @@ export default async function CustomerAccountPage() {
   if (!row) redirect("/login?next=/account");
 
   const prefs = resolvePrefs("CUSTOMER", row.notificationPrefs);
+  const mfa = await getMfaStatus();
   const displayName = row.fullName ?? row.email.split("@")[0];
 
   return (
@@ -70,7 +72,7 @@ export default async function CustomerAccountPage() {
           </AccountSection>
 
           <AccountSection id="security" title="Security">
-            <SecuritySettings />
+            <SecuritySettings twoFactorEnabled={mfa.enabled} twoFactorFactorId={mfa.factorId} />
           </AccountSection>
 
           <AccountSection id="notifications" title="Notifications">

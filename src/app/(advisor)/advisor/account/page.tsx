@@ -9,6 +9,7 @@ import { PayoutSettings } from "@/components/account/PayoutSettings";
 import { NotificationSettings } from "@/components/account/NotificationSettings";
 import { DangerZone } from "@/components/account/DangerZone";
 import { getCurrentUser } from "@/lib/auth";
+import { getMfaStatus } from "@/lib/mfa";
 import { prisma } from "@/lib/prisma";
 import { keysForRole, resolvePrefs } from "@/lib/notifications";
 import { formatMoney } from "@/lib/currency";
@@ -54,6 +55,7 @@ export default async function AdvisorAccountPage() {
   const handle = row?.email?.split("@")[0] ?? "advisor";
   const verified = profile.verificationStatus === "VERIFIED";
   const prefs = resolvePrefs("ADVISOR", row?.notificationPrefs);
+  const mfa = await getMfaStatus();
   const sessionRateLabel = cheapest
     ? `${formatMoney(cheapest.priceCents, cheapest.currency)} per single session`
     : null;
@@ -95,7 +97,7 @@ export default async function AdvisorAccountPage() {
           </AccountSection>
 
           <AccountSection id="security" title="Security">
-            <SecuritySettings />
+            <SecuritySettings twoFactorEnabled={mfa.enabled} twoFactorFactorId={mfa.factorId} />
           </AccountSection>
 
           <AccountSection id="payouts" title="Payout details">

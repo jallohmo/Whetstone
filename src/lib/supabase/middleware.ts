@@ -41,5 +41,19 @@ export async function updateSession(request: NextRequest) {
   // copy lives in public.users and is what server-side permission checks read.
   const role = (user?.user_metadata?.role as string | undefined) ?? null;
 
-  return { response, user, role };
+  // Two-factor: if the user has a verified TOTP factor but has only completed
+  // password auth (aal1), they must clear the second step. Derived from the
+  // session's assurance level (local, no extra round-trip). Fails soft so an MFA
+  // hiccup never locks a user out — only opted-in users are ever gated.
+  let mfaRequired = false;
+  if (user) {
+    try {
+      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      mfaRequired = data?.currentLevel === "aal1" && data?.nextLevel === "aal2";
+    } catch {
+      mfaRequired = false;
+    }
+  }
+
+  return { response, user, role, mfaRequired };
 }

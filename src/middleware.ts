@@ -12,8 +12,27 @@ import { updateSession } from "@/lib/supabase/middleware";
  * check against AdvisorProfile.verificationStatus, deliberately not here.
  */
 export async function middleware(request: NextRequest) {
-  const { response, user, role } = await updateSession(request);
+  const { response, user, role, mfaRequired } = await updateSession(request);
   const { pathname } = request.nextUrl;
+
+  // Two-factor gate: a signed-in user who enabled 2FA but hasn't cleared the
+  // second step this session is sent to /mfa first. Auth/entry routes are exempt
+  // so there's no redirect loop and they can still sign out.
+  const mfaExempt =
+    pathname === "/mfa" ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api") ||
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
+  if (user && mfaRequired && !mfaExempt) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/mfa";
+    url.search = "";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
 
   // Segment-aware so the public "/advisors/:id" profile route is NOT caught by
   // the advisor-dashboard gate ("/advisor", "/advisor/..."). "/advisors" is a
