@@ -8,6 +8,8 @@ export interface CurrentUser {
   id: string;
   email: string;
   role: UserRole;
+  fullName: string | null;
+  avatarUrl: string | null;
 }
 
 /**
@@ -33,7 +35,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     // Authoritative role/identity from our mirror table.
     const row = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, email: true, role: true },
+      select: { id: true, email: true, role: true, fullName: true, avatarUrl: true },
     });
     return row ?? null;
   } catch (err) {

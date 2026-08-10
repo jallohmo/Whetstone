@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AdvisorNav } from "@/components/advisor/AdvisorNav";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { Avatar } from "@/components/ui/Avatar";
+import { ProfileMenu } from "@/components/shared/ProfileMenu";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Advisor shell (Screens 10-14). 264px white rail with a 1px right border on a
@@ -19,6 +18,12 @@ export default async function AdvisorLayout({
 }) {
   const user = await getCurrentUser();
   const handle = user?.email?.split("@")[0] ?? "advisor";
+  const profile = user
+    ? await prisma.advisorProfile.findUnique({
+        where: { userId: user.id },
+        select: { id: true, avatarUrl: true, verificationStatus: true },
+      })
+    : null;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -31,18 +36,15 @@ export default async function AdvisorLayout({
         </p>
         <AdvisorNav />
 
-        <div className="mt-auto flex items-center gap-3 border-t border-gray-150 pt-4">
-          <Avatar name={handle} size={34} gradient="brand" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink">{handle}</p>
-            <p className="truncate text-xs text-gray-500">Advisor</p>
-          </div>
-          <SignOutButton
-            aria-label="Sign out"
-            className="rounded-md p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-          >
-            <LogOut size={18} strokeWidth={2} />
-          </SignOutButton>
+        <div className="mt-auto border-t border-gray-150 pt-4">
+          <ProfileMenu
+            role="advisor"
+            displayName={handle}
+            email={user?.email ?? ""}
+            avatarUrl={profile?.avatarUrl ?? user?.avatarUrl}
+            verified={profile?.verificationStatus === "VERIFIED"}
+            publicProfileId={profile?.id}
+          />
         </div>
       </aside>
 

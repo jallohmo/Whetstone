@@ -38,6 +38,12 @@ model User {
   id              String           @id
   email           String           @unique
   role            UserRole
+  // Account & profile (screens 9c/14c). These live on User (not a role profile)
+  // so they work for a customer who hasn't created a CustomerProfile yet.
+  // users is owner+OPS-only under RLS, so they are never publicly exposed.
+  fullName        String?          @map("full_name")
+  phone           String?          @map("phone")
+  avatarUrl       String?          @map("avatar_url")
   // Per-key notification toggles (role-agnostic map, e.g. {"newMessages": true}).
   // Defaults live in code (lib/notifications) so an absent value reads as the default.
   notificationPrefs Json?          @map("notification_prefs")
@@ -124,12 +130,8 @@ model CustomerProfile {
   businessName String           @map("business_name")
   industryId   String           @map("industry_id")
   industry     IndustryTaxonomy @relation(fields: [industryId], references: [id])
-  // Account & profile (screen 9c). All nullable — collected on the account page,
-  // not required at signup. customer_profiles is owner+OPS-only under RLS, so
-  // these (incl. stripeCustomerId) are never publicly exposed.
-  fullName         String? @map("full_name")
-  phone            String? @map("phone")
-  avatarUrl        String? @map("avatar_url")
+  // Stripe customer id for saved payment methods (screen 9c). Nullable — set only
+  // once a customer saves a card. customer_profiles is owner+OPS-only under RLS.
   stripeCustomerId String? @map("stripe_customer_id")
   needs        Need[]
   bookings     Booking[]

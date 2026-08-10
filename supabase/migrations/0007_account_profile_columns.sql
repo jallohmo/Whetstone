@@ -4,16 +4,18 @@
 -- hosted DB can be brought forward via the supabase/migrations path too, and it
 -- carries the grant tightening Prisma can't express. All ADDs are idempotent.
 
--- users: per-key notification preferences (owner-only readable under 0002 RLS).
+-- users: profile fields + per-key notification preferences. On User (not a role
+-- profile) so they work for a customer with no CustomerProfile yet. users is
+-- owner+OPS-only under 0002 RLS, so none of these are publicly exposed.
 alter table public.users
-  add column if not exists notification_prefs jsonb;
-
--- customer_profiles: profile PII + Stripe customer id. The table is owner+OPS-only
--- (0004), so these need no extra column grants — they are never publicly exposed.
-alter table public.customer_profiles
   add column if not exists full_name          text,
   add column if not exists phone              text,
   add column if not exists avatar_url         text,
+  add column if not exists notification_prefs jsonb;
+
+-- customer_profiles: Stripe customer id for saved cards. The table is owner+OPS-only
+-- (0004), so this needs no extra column grant — it is never publicly exposed.
+alter table public.customer_profiles
   add column if not exists stripe_customer_id text;
 
 -- advisor_profiles: payout-schedule preference + soft-deactivation timestamp.
