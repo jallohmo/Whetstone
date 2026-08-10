@@ -34,23 +34,31 @@ Complete list of what the code actually reads (`process.env.*` + Prisma `env()`)
 > `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `KYC_PROVIDER` appear in `.env.example`
 > but are **not read anywhere in the code** — reserved for later, safe to skip.
 
-## 2. Stripe webhook — domain must match production
+> **Supabase↔Vercel integration:** the DB URL and Supabase keys are currently
+> provided by the official integration under *different names*
+> (`POSTGRES_PRISMA_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+> `SUPABASE_SECRET_KEY`, `SUPABASE_URL`). The code reads both those and the names
+> above, preferring the app's own names. **Do not** re-add a manual `DATABASE_URL`
+> unless it's correct — a stale manual one overrides the integration's working URL.
 
-A webhook endpoint was created in the **sandbox** account pointing at:
+## 2. Stripe webhook — domain must match production  ⛔ blocked on a production domain (§6)
+
+A webhook endpoint was created in the **sandbox** account pointing at a
+placeholder domain:
 
 ```
 https://whetstone.vercel.app/api/stripe/webhook   (event: checkout.session.completed)
 ```
 
-- ⚠️ **Confirm this is the real production domain.** If it differs,
-  `checkout.session.completed` silently never fires and bookings are never
-  fulfilled — no error, just nothing happens. Update the endpoint URL if so.
-- Put the endpoint's signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`.
-- **Going live:** create a *separate* live-mode webhook endpoint (its own signing
-  secret) and swap in live-mode `STRIPE_SECRET_KEY` / secret. The sandbox endpoint
-  only fires for test-mode payments.
+- ⚠️ **No production domain exists yet** (see §6). Until one is chosen, this URL
+  is wrong — `checkout.session.completed` silently never fires and bookings are
+  never fulfilled. Update the endpoint URL once the domain is live.
+- Put the endpoint's signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`
+  (current sandbox secret: `whsec_8aczUaz5TDuO9TN4TEvyGQaGUpnmiHpK`).
+- **Going live:** see §6 (Stripe go-live) — a *separate* live-mode webhook with
+  its own secret. The sandbox endpoint only fires for test-mode payments.
 
-## 3. Supabase Auth redirect allow-list
+## 3. Supabase Auth redirect allow-list  ⛔ needs the production domain (§6)
 
 Sign-up uses `emailRedirectTo: ${origin}/auth/callback`. In Supabase →
 **Authentication → URL Configuration**:
@@ -76,6 +84,52 @@ these before the first real build.
   token to admit users. If testing shows "not allowed to join" errors, either
   relax the domain's default room privacy or extend `ensureVideoRoom()` in
   `src/lib/actions/video.ts` to call `POST /v1/meeting-tokens`.
+
+## 6. Pre-launch activities — production domain & Stripe go-live
+
+These are the outstanding launch activities. They are grouped because **several
+other items depend on having a real production domain**, so this comes first.
+
+### 6a. Production domain (do this first — unblocks §2 and §3)
+
+There is **no custom production domain yet** — the app runs on Vercel's
+auto-assigned `*.vercel.app` URLs (`whetstone-nu.vercel.app`,
+`whetstone-engage-x2.vercel.app`). To launch on a real domain:
+
+1. Buy/choose a domain (or decide to launch on `*.vercel.app` for now).
+2. Vercel → project → **Settings → Domains** → add it; follow the DNS steps.
+3. Once live, it becomes the value used everywhere below.
+4. **Then action the domain-dependent items:**
+   - **§2** — update the Stripe webhook endpoint URL to `https://<domain>/api/stripe/webhook`.
+   - **§3** — set Supabase **Site URL** + add `https://<domain>/auth/callback` to Redirect URLs.
+
+> Until a domain is chosen, §2 and §3 can't be finalised. Everything else
+> (test-mode checkout aside) works on the `*.vercel.app` URLs.
+
+### 6b. Stripe go-live (production payments)
+
+Currently on the Stripe **sandbox** (test mode only — no real money moves).
+To take real payments:
+
+1. Activate the Stripe account (business details, bank for payouts).
+2. Enable **Stripe Connect** (Express) for advisor payouts.
+3. Set **live-mode** keys in Vercel: `STRIPE_SECRET_KEY` (live) and wire
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (live) — note this var is in `.env.example`
+   but not yet read by the code, so wiring it is a small code change.
+4. Create a **live-mode** webhook at `https://<domain>/api/stripe/webhook`
+   (event `checkout.session.completed`) and put its **live** signing secret in
+   `STRIPE_WEBHOOK_SECRET`.
+5. Confirm the Stripe account settles in **AUD** (matches the platform currency).
+
+## 7. Verify with /api/health
+
+After any deploy, load **`https://<domain>/api/health`** — it reports database
+reachability, which env vars are present/missing (names only), and which services
+(Stripe, video, error reporting) are configured. Use it as the first diagnostic
+whenever something looks broken.
+
+To activate **Sentry** error tracking (code is already wired): create a project
+at sentry.io and set `SENTRY_DSN` in Vercel.
 
 ---
 
