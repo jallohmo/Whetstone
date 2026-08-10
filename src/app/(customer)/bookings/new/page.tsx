@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
-import { PageHeader, Card, Button } from "@/components/ui";
-import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
+import { ArrowRight, Check } from "lucide-react";
+import { PageHeader, Button } from "@/components/ui";
+import { BookingStepper } from "@/components/ui/BookingStepper";
+import { RadioCard } from "@/components/ui/selection";
+import { Money } from "@/components/shared/Money";
 import { createBooking } from "@/lib/actions/bookings";
 import { prisma } from "@/lib/prisma";
 
@@ -37,60 +40,78 @@ export default async function NewBookingPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-xl">
-      <PageHeader title="Book a session" subtitle="Pick a package and a time. Every package has a fixed, defined scope." />
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-8">
+        <BookingStepper current="book" />
+      </div>
+      <PageHeader
+        title="Book a session"
+        subtitle="Pick a package and a time. Every package has a fixed, defined scope."
+      />
 
       <form action={createBooking}>
         <input type="hidden" name="advisorId" value={advisorId} />
         {searchParams.needId && <input type="hidden" name="needId" value={searchParams.needId} />}
 
         {/* Packages */}
-        <fieldset className="mb-6">
+        <fieldset className="mb-8">
           <legend className="mb-3 text-h3 text-ink">Choose a package</legend>
           <div className="flex flex-col gap-list-rhythm">
             {packages.map((p, i) => (
-              <label key={p.id} className="block cursor-pointer">
-                <Card className="flex gap-3">
-                  <input type="radio" name="packageId" value={p.id} required defaultChecked={i === 0} className="mt-1 h-4 w-4 shrink-0" />
-                  <div className="flex-1">
+              <RadioCard key={p.id} name="packageId" value={p.id} defaultChecked={i === 0}>
+                <div className="pr-8">
+                  <div className="flex items-baseline justify-between gap-3">
                     <h4 className="text-h3 text-ink">{p.name}</h4>
-                    <div className="mt-2">
-                      <BoundedScopeSummary
-                        sessionCount={p.sessionCount}
-                        scopeDescription={p.scopeDescription}
-                        priceCents={p.priceCents}
-                        currency={p.currency}
-                      />
-                    </div>
+                    <Money
+                      amountMinor={p.priceCents}
+                      currency={p.currency}
+                      className="text-body font-semibold text-ink"
+                    />
                   </div>
-                </Card>
-              </label>
+                  <p className="mt-2 flex items-center gap-2 text-body font-medium text-ink">
+                    <Check size={16} className="text-green-500" strokeWidth={2.5} />
+                    {p.sessionCount} {p.sessionCount === 1 ? "session" : "sessions"}, fixed scope
+                  </p>
+                  <p className="mt-1 text-body text-gray-600">{p.scopeDescription}</p>
+                  <p className="mt-3 border-t border-dashed border-gray-300 pt-3 text-sm text-gray-500">
+                    Bounded engagement — no open-ended hours.
+                  </p>
+                </div>
+              </RadioCard>
             ))}
           </div>
         </fieldset>
 
         {/* Times */}
-        <fieldset className="mb-6">
+        <fieldset className="mb-8">
           <legend className="mb-3 text-h3 text-ink">Choose a time</legend>
           {slots.length === 0 ? (
-            <Card className="text-body text-gray-500">
+            <div className="rounded-lg border border-gray-200 bg-white p-card text-body text-gray-500 shadow-card">
               This advisor has no open times right now. Message them to arrange one, or
               check back soon.
-            </Card>
+            </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {slots.map((s, i) => (
-                <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2.5 text-body text-ink has-[:checked]:border-ink">
-                  <input type="radio" name="slotId" value={s.id} required defaultChecked={i === 0} className="h-4 w-4" />
-                  {slotFmt.format(s.startsAt)}
-                </label>
+                <RadioCard
+                  key={s.id}
+                  name="slotId"
+                  value={s.id}
+                  defaultChecked={i === 0}
+                  className="p-3.5"
+                >
+                  <span className="pr-6 text-body font-medium text-ink">
+                    {slotFmt.format(s.startsAt)}
+                  </span>
+                </RadioCard>
               ))}
             </div>
           )}
         </fieldset>
 
-        <Button type="submit" disabled={slots.length === 0}>
+        <Button type="submit" size="lg" disabled={slots.length === 0}>
           Continue to checkout
+          <ArrowRight size={18} strokeWidth={2} />
         </Button>
       </form>
     </div>

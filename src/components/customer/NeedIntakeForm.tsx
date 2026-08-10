@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import { createNeed } from "@/lib/actions/needs";
 
@@ -9,6 +10,22 @@ export interface TaxonomyOption {
   id: string;
   name: string;
   children: { id: string; name: string }[];
+}
+
+const selectClass =
+  "w-full appearance-none rounded-sm border border-gray-200 bg-white px-3 py-2.5 pr-10 text-body text-ink outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus";
+
+function SelectShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown
+        size={18}
+        strokeWidth={2}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+      />
+    </div>
+  );
 }
 
 /**
@@ -26,35 +43,36 @@ export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] })
   return (
     <form action={createNeed}>
       <Field label="What kind of business do you run?" hint="Pick the closest industry — you can refine below.">
-        <select
-          name="industryId"
-          value={industryId}
-          onChange={(e) => setIndustryId(e.target.value)}
-          required
-          className="w-full rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink outline-none focus:border-ink"
-        >
-          <option value="">Select an industry…</option>
-          {industries.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.name}
-            </option>
-          ))}
-        </select>
+        <SelectShell>
+          <select
+            name="industryId"
+            value={industryId}
+            onChange={(e) => setIndustryId(e.target.value)}
+            required
+            className={selectClass}
+          >
+            <option value="">Select an industry…</option>
+            {industries.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+        </SelectShell>
       </Field>
 
       {subSpecialties.length > 0 && (
         <Field label="Anything more specific?" hint="Optional — helps us match the right person.">
-          <select
-            name="subSpecialtyId"
-            className="w-full rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink outline-none focus:border-ink"
-          >
-            <option value="">No preference</option>
-            {subSpecialties.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <SelectShell>
+            <select name="subSpecialtyId" className={selectClass}>
+              <option value="">No preference</option>
+              {subSpecialties.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </SelectShell>
         </Field>
       )}
 
@@ -66,10 +84,12 @@ export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] })
         <Textarea name="description" rows={5} placeholder="Describe the situation…" required />
       </Field>
 
-      <SubmitButton />
-      <p className="mt-3 text-sm text-gray-500">
-        No account needed yet — you only sign up when you decide to book.
-      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-4">
+        <SubmitButton />
+        <p className="text-sm text-gray-500">
+          No account needed yet — you only sign up when you decide to book.
+        </p>
+      </div>
     </form>
   );
 }
@@ -79,6 +99,7 @@ function SubmitButton() {
   return (
     <Button type="submit" disabled={pending}>
       {pending ? "Finding advisors…" : "See who can help"}
+      {!pending && <ArrowRight size={16} strokeWidth={2} />}
     </Button>
   );
 }
