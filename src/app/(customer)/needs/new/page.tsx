@@ -14,7 +14,13 @@ export default async function NewNeedPage() {
       orderBy: { name: "asc" },
       include: { children: { orderBy: { name: "asc" } } },
     })
-    .catch(() => []); // DB not provisioned yet during scaffold — render empty selector.
+    .catch((err) => {
+      // Degrade to an empty selector rather than crashing the page, but surface
+      // the real cause in server logs (e.g. Vercel runtime logs) — a silently
+      // empty dropdown is otherwise indistinguishable from an unreachable DB.
+      console.error("NewNeedPage: failed to load industry taxonomy —", err);
+      return [];
+    });
 
   return (
     <div className="mx-auto max-w-xl">
