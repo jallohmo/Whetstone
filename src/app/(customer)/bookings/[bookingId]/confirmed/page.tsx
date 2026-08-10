@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
-import { PageHeader, Card } from "@/components/ui";
+import { Calendar, Check, MessageCircle } from "lucide-react";
+import { Card } from "@/components/ui";
+import { BookingStepper } from "@/components/ui/BookingStepper";
+import { Avatar } from "@/components/ui/Avatar";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
 import { prisma } from "@/lib/prisma";
@@ -34,20 +36,36 @@ export default async function BookingConfirmedPage({
     : null;
 
   return (
-    <div className="mx-auto max-w-xl">
-      <PageHeader title="You're booked in" />
-      <Card>
-        <p className="flex items-center gap-2 text-body-lg font-semibold text-ink">
-          <CheckCircle2 className="text-green-500" size={20} />
-          You&apos;re booked in with {advisorName}.
-        </p>
-        {when && (
-          <p className="mt-2 text-body-lg font-semibold text-ink">{when}</p>
-        )}
-        <p className="mt-2 text-body text-gray-600">
+    <div className="mx-auto max-w-[640px]">
+      <div className="mb-8">
+        <BookingStepper current="done" />
+      </div>
+
+      {/* Success hero */}
+      <div className="mb-6 text-center">
+        <span className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-pill bg-green-100 text-green-700">
+          <Check size={30} strokeWidth={3} />
+        </span>
+        <h1 className="mt-4 text-h1 text-ink">You&apos;re booked in</h1>
+        <p className="mx-auto mt-2 max-w-md text-body text-gray-600">
           Come with your actual problem — that&apos;s what this is for. You&apos;ll get a
           reminder and a video link before the session.
         </p>
+      </div>
+
+      <Card>
+        <div className="flex items-center gap-3">
+          <Avatar name={advisorName} gradient="brand" size={52} />
+          <div>
+            <p className="text-body font-semibold text-ink">Session with {advisorName}</p>
+            {when && (
+              <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-500">
+                <Calendar size={14} strokeWidth={2} />
+                {when}
+              </p>
+            )}
+          </div>
+        </div>
 
         <div className="mt-5">
           <BoundedScopeSummary
@@ -62,11 +80,18 @@ export default async function BookingConfirmedPage({
           <InsuranceCoverageNotice />
         </div>
 
-        <div className="mt-6 flex gap-3">
-          <Link href={`/bookings/${booking.id}/messages`} className="rounded-md border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink">
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href={`/bookings/${booking.id}/messages`}
+            className="inline-flex items-center gap-2 rounded-md bg-ink px-5 py-3 text-body font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
+          >
+            <MessageCircle size={17} strokeWidth={2} />
             Message your advisor
           </Link>
-          <Link href="/" className="rounded-md px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-100">
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-md border border-gray-200 bg-white px-5 py-3 text-body font-semibold text-ink transition duration-DEFAULT ease-soft hover:border-gray-300"
+          >
             Back home
           </Link>
         </div>

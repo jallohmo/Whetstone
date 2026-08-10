@@ -1,46 +1,52 @@
 import Link from "next/link";
-import { CalendarClock, Inbox, LayoutList, UserCheck, Wallet } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { AdvisorNav } from "@/components/advisor/AdvisorNav";
+import { Wordmark } from "@/components/ui/Wordmark";
+import { Avatar } from "@/components/ui/Avatar";
 
 /**
- * Advisor shell (Screens 10-14). 264px white sidebar. Larger targets, plain
- * language, forgiving interactions — the audience spans a wide range of digital
- * fluency. Do NOT reuse the customer or ops visual language here.
+ * Advisor shell (Screens 10-14). 264px white rail with a 1px right border on a
+ * gray-50 canvas. Larger targets, plain language, forgiving interactions — the
+ * audience spans a wide range of digital fluency. Do NOT reuse the customer or
+ * ops visual language here.
  */
-const nav = [
-  { href: "/advisor/apply", label: "Application", icon: UserCheck },
-  { href: "/advisor/verification-status", label: "Verification", icon: LayoutList },
-  { href: "/advisor/availability", label: "Availability", icon: CalendarClock },
-  { href: "/advisor/bookings", label: "Bookings", icon: Inbox },
-  { href: "/advisor/earnings", label: "Earnings", icon: Wallet },
-];
-
-export default function AdvisorLayout({
+export default async function AdvisorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await getCurrentUser();
+  const handle = user?.email?.split("@")[0] ?? "advisor";
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <aside className="hidden w-[264px] shrink-0 flex-col border-r border-gray-200 bg-white p-5 md:flex">
-        <Link href="/" className="mb-8 block text-h3 font-bold tracking-tight text-ink">
-          Whetstone
+      <aside className="hidden w-[264px] shrink-0 flex-col border-r border-gray-150 bg-white p-5 md:flex">
+        <Link href="/" aria-label="Whetstone home" className="mb-6 block transition hover:opacity-90">
+          <Wordmark size="sm" />
         </Link>
-        <nav className="flex flex-col gap-1">
-          {nav.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-body text-gray-700 hover:bg-gray-100"
-            >
-              <Icon size={18} strokeWidth={2} />
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <SignOutButton className="mt-auto rounded-md px-3 py-2.5 text-left text-body text-gray-600 hover:bg-gray-100" />
+        <p className="mb-3 px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+          Advisor
+        </p>
+        <AdvisorNav />
+
+        <div className="mt-auto flex items-center gap-3 border-t border-gray-150 pt-4">
+          <Avatar name={handle} size={34} gradient="brand" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-ink">{handle}</p>
+            <p className="truncate text-xs text-gray-500">Advisor</p>
+          </div>
+          <SignOutButton
+            aria-label="Sign out"
+            className="rounded-md p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+          >
+            <LogOut size={18} strokeWidth={2} />
+          </SignOutButton>
+        </div>
       </aside>
-      <main className="flex-1 px-6 py-8 md:px-10">
+
+      <main className="flex-1 px-6 py-8 md:px-[44px] md:py-[34px]">
         <div className="mx-auto max-w-3xl">{children}</div>
       </main>
     </div>

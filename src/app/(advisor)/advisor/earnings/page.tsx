@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
-import { PageHeader, Card, Button } from "@/components/ui";
+import { Check, CheckCircle2, Clock } from "lucide-react";
+import { PageHeader, Card, Button, Eyebrow } from "@/components/ui";
 import { Money } from "@/components/shared/Money";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -36,10 +36,16 @@ export default async function EarningsPage() {
     payout: splitCommission(p.amountCents).advisorPayoutMinor,
     status: p.status,
   }));
-  // Sum "coming your way" per currency (held only).
+
   const pendingByCcy = new Map<string, number>();
+  const releasedByCcy = new Map<string, number>();
+  let releasedCount = 0;
   for (const r of rows) {
     if (r.status === "held") pendingByCcy.set(r.currency, (pendingByCcy.get(r.currency) ?? 0) + r.payout);
+    if (r.status === "released") {
+      releasedByCcy.set(r.currency, (releasedByCcy.get(r.currency) ?? 0) + r.payout);
+      releasedCount++;
+    }
   }
 
   return (
@@ -63,46 +69,65 @@ export default async function EarningsPage() {
         </p>
       )}
 
-      {/* Coming your way */}
-      <Card className="mb-page-gap">
-        <p className="text-sm text-gray-500">Coming your way</p>
-        {pendingByCcy.size === 0 ? (
-          <p className="mt-1 text-display3 text-ink">
-            <Money amountMinor={0} currency={DEFAULT_CURRENCY} />
-          </p>
-        ) : (
-          <div className="mt-1 flex flex-wrap gap-4">
-            {[...pendingByCcy.entries()].map(([ccy, amt]) => (
-              <span key={ccy} className="text-display3 text-ink">
-                <Money amountMinor={amt} currency={ccy} />
-              </span>
-            ))}
+      {/* Top metric grid */}
+      <div className="mb-page-gap grid gap-4 sm:grid-cols-[1.4fr_1fr]">
+        <div className="rounded-xl bg-ink p-card text-white shadow-ink-glow">
+          <Eyebrow tone="blue-300">Coming your way</Eyebrow>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-4">
+            {pendingByCcy.size === 0 ? (
+              <Money amountMinor={0} currency={DEFAULT_CURRENCY} className="text-[40px] font-bold tracking-[-0.02em]" />
+            ) : (
+              [...pendingByCcy.entries()].map(([ccy, amt]) => (
+                <Money key={ccy} amountMinor={amt} currency={ccy} className="text-[40px] font-bold tracking-[-0.02em]" />
+              ))
+            )}
           </div>
-        )}
-        <p className="mt-1 text-sm text-gray-500">Released to you after each session completes.</p>
-      </Card>
+          <p className="mt-2 text-sm text-white/60">
+            Released to you after each session completes.
+          </p>
+        </div>
 
+        <Card className="flex flex-col justify-center">
+          <p className="text-sm text-gray-500">Released to date</p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
+            {releasedByCcy.size === 0 ? (
+              <Money amountMinor={0} currency={DEFAULT_CURRENCY} className="text-display3 font-bold text-green-700" />
+            ) : (
+              [...releasedByCcy.entries()].map(([ccy, amt]) => (
+                <Money key={ccy} amountMinor={amt} currency={ccy} className="text-display3 font-bold text-green-700" />
+              ))
+            )}
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            {releasedCount} {releasedCount === 1 ? "session" : "sessions"} completed
+          </p>
+        </Card>
+      </div>
+
+      {/* Payout table */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-body">
           <thead className="border-b border-gray-200 text-left text-sm text-gray-500">
             <tr>
-              <th className="px-4 py-3 font-semibold">Booking</th>
-              <th className="px-4 py-3 font-semibold">Your payout</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-5 py-3 font-semibold">Booking</th>
+              <th className="px-5 py-3 font-semibold">Your payout</th>
+              <th className="px-5 py-3 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-6 text-gray-500">No payments yet.</td></tr>
+              <tr><td colSpan={3} className="px-5 py-6 text-gray-500">No payments yet.</td></tr>
             ) : (
               rows.map((r) => (
                 <tr key={r.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-3 font-mono text-sm">{r.bookingId.slice(0, 10)}…</td>
-                  <td className="px-4 py-3"><Money amountMinor={r.payout} currency={r.currency} /></td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className={r.status === "released" ? "text-green-700" : r.status === "refunded" ? "text-red-700" : "text-gray-500"}>
-                      {r.status === "held" ? "Held (releases after session)" : r.status}
-                    </span>
+                  <td className="px-5 py-3.5">
+                    <span className="ws-mono text-sm text-gray-600">{r.bookingId.slice(0, 10)}…</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <Money amountMinor={r.payout} currency={r.currency} className="font-semibold text-ink" />
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <StatusPill status={r.status} />
                   </td>
                 </tr>
               ))
@@ -111,5 +136,28 @@ export default async function EarningsPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  if (status === "released") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+        <Check size={13} strokeWidth={2.5} /> Released
+      </span>
+    );
+  }
+  if (status === "refunded") {
+    return (
+      <span className="inline-flex items-center rounded-pill bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
+        Refunded
+      </span>
+    );
+  }
+  // held (and any other pending state)
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-pill bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+      <Clock size={13} strokeWidth={2} /> Held · releases after session
+    </span>
   );
 }

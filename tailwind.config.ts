@@ -79,9 +79,16 @@ const config: Config = {
       },
       boxShadow: {
         card: "0 1px 2px rgba(17,17,20,.03), 0 8px 24px rgba(17,17,20,.05)",
+        // Elevated shell (nav pills, sidebars, sticky bars).
+        shell: "0 1px 2px rgba(17,17,20,.03), 0 18px 48px rgba(17,17,20,.07)",
         md: "0 2px 4px rgba(17,17,20,.04), 0 12px 32px rgba(17,17,20,.08)",
         lg: "0 4px 8px rgba(17,17,20,.06), 0 24px 56px rgba(17,17,20,.14)",
+        // Floating hero/top-match card lift.
+        float: "0 24px 60px rgba(17,17,20,.12)",
         "ink-glow": "0 6px 18px rgba(17,17,20,.22)",
+        "ink-glow-lg": "0 8px 22px rgba(17,17,20,.24)",
+        // Standard focus ring — blue at .18 alpha, per the design system.
+        focus: "0 0 0 3px rgba(46,69,255,.18)",
         "inset-well": "inset 0 1px 2px rgba(17,17,20,.06)",
       },
       transitionTimingFunction: {

@@ -8,17 +8,29 @@ import type { ComponentProps, ReactNode } from "react";
 
 export function Button({
   variant = "primary",
+  size = "md",
   className,
   ...props
-}: ComponentProps<"button"> & { variant?: "primary" | "secondary" | "ghost" }) {
+}: ComponentProps<"button"> & {
+  variant?: "primary" | "secondary" | "ghost";
+  size?: "md" | "lg";
+}) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-body font-semibold transition duration-DEFAULT ease-soft disabled:opacity-50 disabled:pointer-events-none";
+    "inline-flex items-center justify-center gap-2 rounded-md font-semibold transition duration-DEFAULT ease-soft outline-none focus-visible:shadow-focus disabled:opacity-50 disabled:pointer-events-none";
+  const sizes = {
+    md: "px-4 py-2.5 text-body",
+    lg: "px-6 py-3.5 text-body-lg",
+  } as const;
   const variants = {
-    primary: "bg-ink text-white shadow-ink-glow hover:-translate-y-px",
-    secondary: "bg-white text-ink border border-gray-200 hover:border-gray-300",
+    primary:
+      "bg-ink text-white shadow-ink-glow hover:-translate-y-px hover:shadow-ink-glow-lg",
+    secondary:
+      "bg-white text-ink border border-gray-200 hover:-translate-y-px hover:border-gray-300",
     ghost: "text-ink hover:bg-gray-100",
   } as const;
-  return <button className={cn(base, variants[variant], className)} {...props} />;
+  return (
+    <button className={cn(base, sizes[size], variants[variant], className)} {...props} />
+  );
 }
 
 export function Card({
@@ -39,28 +51,16 @@ export function Card({
   );
 }
 
+// Shared field chrome — blue 1.5px border + soft focus ring, per the design system.
+const fieldBase =
+  "w-full rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink placeholder:text-gray-400 outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus";
+
 export function Input({ className, ...props }: ComponentProps<"input">) {
-  return (
-    <input
-      className={cn(
-        "w-full rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink placeholder:text-gray-400 outline-none focus:border-ink",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <input className={cn(fieldBase, className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
-  return (
-    <textarea
-      className={cn(
-        "w-full rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink placeholder:text-gray-400 outline-none focus:border-ink",
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <textarea className={cn(fieldBase, className)} {...props} />;
 }
 
 export function Label({ className, ...props }: ComponentProps<"label">) {
@@ -102,6 +102,38 @@ export function PageHeader({
       <h1 className="text-h1 text-ink">{title}</h1>
       {subtitle && <p className="mt-2 max-w-2xl text-body-lg text-gray-500">{subtitle}</p>}
     </header>
+  );
+}
+
+/**
+ * Uppercase eyebrow label — 11–12px / 600 / letter-spacing .1em. Sits above
+ * section titles and hero copy. `tone` maps to the role-of-colour palette.
+ */
+export function Eyebrow({
+  children,
+  tone = "muted",
+  className,
+}: {
+  children: ReactNode;
+  tone?: "muted" | "blue" | "blue-300" | "green";
+  className?: string;
+}) {
+  const tones = {
+    muted: "text-gray-500",
+    blue: "text-brand-blue-600",
+    "blue-300": "text-brand-blue/70",
+    green: "text-green-700",
+  } as const;
+  return (
+    <span
+      className={cn(
+        "text-2xs font-semibold uppercase tracking-[0.12em]",
+        tones[tone],
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

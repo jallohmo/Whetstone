@@ -26,17 +26,17 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
       <input type="hidden" name="wouldRebook" value={rebook === null ? "" : String(rebook)} />
 
       <Field label="How was it?">
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
               onClick={() => setRating(n)}
               aria-label={`${n} star${n > 1 ? "s" : ""}`}
-              className="p-1"
+              className="rounded-sm p-0.5 outline-none transition duration-DEFAULT ease-soft hover:scale-105 focus-visible:shadow-focus"
             >
               <Star
-                size={28}
+                size={32}
                 className={cn(n <= rating ? "fill-amber-500 text-amber-500" : "text-gray-300")}
               />
             </button>
@@ -45,7 +45,7 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
       </Field>
 
       <Field label="Did it address your problem?">
-        <div className="flex gap-2">
+        <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1">
           {[
             { v: "yes", l: "Yes" },
             { v: "partially", l: "Partially" },
@@ -56,8 +56,8 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
               type="button"
               onClick={() => setAddressed(o.v)}
               className={cn(
-                "rounded-md border px-4 py-2 text-body font-semibold",
-                addressed === o.v ? "border-ink bg-ink text-white" : "border-gray-200 bg-white text-ink",
+                "rounded-[10px] px-4 py-2 text-body font-semibold transition duration-DEFAULT ease-soft",
+                addressed === o.v ? "bg-ink text-white shadow-ink-glow" : "text-gray-600 hover:text-ink",
               )}
             >
               {o.l}
@@ -67,7 +67,7 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
       </Field>
 
       <Field label="Would you book them again?">
-        <div className="flex gap-2">
+        <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1">
           {[
             { v: true, l: "Yes" },
             { v: false, l: "No" },
@@ -77,8 +77,8 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
               type="button"
               onClick={() => setRebook(o.v)}
               className={cn(
-                "rounded-md border px-4 py-2 text-body font-semibold",
-                rebook === o.v ? "border-ink bg-ink text-white" : "border-gray-200 bg-white text-ink",
+                "rounded-[10px] px-5 py-2 text-body font-semibold transition duration-DEFAULT ease-soft",
+                rebook === o.v ? "bg-ink text-white shadow-ink-glow" : "text-gray-600 hover:text-ink",
               )}
             >
               {o.l}

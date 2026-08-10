@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CalendarClock, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, Plus, TriangleAlert, Trash2 } from "lucide-react";
 import { PageHeader, Card, Button } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +16,7 @@ const fmt = new Intl.DateTimeFormat("en-AU", {
   hour: "numeric",
   minute: "2-digit",
 });
+const timeFmt = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" });
 
 export default async function AvailabilityPage() {
   const user = await getCurrentUser();
@@ -40,37 +41,49 @@ export default async function AvailabilityPage() {
       />
 
       {profile.verificationStatus !== "VERIFIED" && (
-        <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
-          You can set availability now, but customers won&apos;t see you until your
-          profile is verified.
+        <div className="mb-page-gap flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
+          <TriangleAlert size={18} className="mt-0.5 shrink-0" strokeWidth={2} />
+          <p>
+            You can set availability now, but customers won&apos;t see you until your
+            profile is verified.
+          </p>
         </div>
       )}
 
       <Card className="mb-page-gap">
-        <h3 className="mb-3 text-h3 text-ink">Add a slot</h3>
+        <h3 className="mb-4 text-h3 text-ink">Add a slot</h3>
         <form action={addAvailabilitySlot} className="flex flex-wrap items-end gap-3">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-ink">Date &amp; start time</label>
-            <input
-              type="datetime-local"
-              name="startsAt"
-              required
-              className="rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink outline-none focus:border-ink"
-            />
+            <div className="relative">
+              <CalendarClock size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="datetime-local"
+                name="startsAt"
+                required
+                className="rounded-sm border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-body text-ink outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus"
+              />
+            </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-ink">Length</label>
-            <select
-              name="durationMin"
-              defaultValue="60"
-              className="rounded-sm border border-gray-200 bg-white px-3 py-2.5 text-body text-ink outline-none focus:border-ink"
-            >
-              <option value="30">30 minutes</option>
-              <option value="60">60 minutes</option>
-              <option value="90">90 minutes</option>
-            </select>
+            <div className="relative">
+              <select
+                name="durationMin"
+                defaultValue="60"
+                className="w-full appearance-none rounded-sm border border-gray-200 bg-white py-2.5 pl-3 pr-10 text-body text-ink outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus"
+              >
+                <option value="30">30 minutes</option>
+                <option value="60">60 minutes</option>
+                <option value="90">90 minutes</option>
+              </select>
+              <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
-          <Button type="submit">Add slot</Button>
+          <Button type="submit">
+            <Plus size={16} strokeWidth={2} />
+            Add slot
+          </Button>
         </form>
       </Card>
 
@@ -81,17 +94,36 @@ export default async function AvailabilityPage() {
         <div className="flex flex-col gap-list-rhythm">
           {slots.map((s) => (
             <Card key={s.id} className="flex items-center justify-between py-4">
-              <span className="flex items-center gap-2 text-body text-ink">
-                <CalendarClock size={18} className="text-gray-400" />
-                {fmt.format(s.startsAt)} – {new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" }).format(s.endsAt)}
-              </span>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex h-11 w-11 items-center justify-center rounded-md ${
+                    s.isBooked ? "bg-green-100 text-green-700" : "bg-brand-blue-100 text-brand-blue"
+                  }`}
+                >
+                  <CalendarClock size={20} strokeWidth={2} />
+                </span>
+                <div>
+                  <p className="text-body font-semibold text-ink">
+                    {fmt.format(s.startsAt)} – {timeFmt.format(s.endsAt)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {s.isBooked ? "Booked" : "Open"} ·{" "}
+                    {Math.round((s.endsAt.getTime() - s.startsAt.getTime()) / 60000)} minutes
+                  </p>
+                </div>
+              </div>
               {s.isBooked ? (
-                <span className="rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Booked</span>
+                <span className="rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                  Booked
+                </span>
               ) : (
                 <form action={removeAvailabilitySlot}>
                   <input type="hidden" name="slotId" value={s.id} />
-                  <button type="submit" className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-red-700">
-                    <Trash2 size={16} /> Remove
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-red-700"
+                  >
+                    <Trash2 size={16} strokeWidth={2} /> Remove
                   </button>
                 </form>
               )}

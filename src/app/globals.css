@@ -3,10 +3,76 @@
 @tailwind utilities;
 
 /*
- * Fonts: General Sans (UI) + JetBrains Mono (amounts, dates, ops).
- * Self-host under /public/fonts and add @font-face here, or wire up next/font.
- * Falls back to system sans/mono until then — see 06-design-tokens.ts.
+ * Fonts — self-hosted, same-origin (CSP-safe), no build-time network fetch.
+ *
+ * JetBrains Mono (amounts, dates, metrics) ships in this repo under
+ * /public/fonts/jetbrains-mono and is live now.
+ *
+ * General Sans (UI/display) is Fontshare-licensed. The woff2 files live in
+ * /public/fonts/general-sans (Regular/Medium/Semibold/Bold → 400/500/600/700).
+ * If they are ever removed, the browser falls back to the system sans stack
+ * declared in tailwind.config.ts (fontFamily.sans).
  */
+
+/* ---- JetBrains Mono (self-hosted) ---- */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/jetbrains-mono/JetBrainsMono-700.woff2") format("woff2");
+}
+
+/* ---- General Sans (self-hosted) ---- */
+@font-face {
+  font-family: "General Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/general-sans/GeneralSans-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "General Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/general-sans/GeneralSans-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "General Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/general-sans/GeneralSans-Semibold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "General Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/general-sans/GeneralSans-Bold.woff2") format("woff2");
+}
 
 :root {
   color-scheme: light;
@@ -21,6 +87,14 @@ body {
   font-family: theme("fontFamily.sans");
   color: theme("colors.ink");
   line-height: 1.45;
+}
+
+/* Monospace treatment for figures/meta, per the design system (amounts, dates,
+ * metrics, ids). Mirrors the `.ws-mono` class used in the design references so
+ * direct ports read the same as `font-mono`. */
+.ws-mono {
+  font-family: theme("fontFamily.mono");
+  font-feature-settings: "tnum" 1;
 }
 
 /* Dashed dividers inside cards use gray300 per the design system. */

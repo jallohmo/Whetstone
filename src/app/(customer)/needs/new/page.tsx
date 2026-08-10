@@ -1,4 +1,5 @@
-import { PageHeader } from "@/components/ui";
+import { PageHeader, Card } from "@/components/ui";
+import { BookingStepper } from "@/components/ui/BookingStepper";
 import { NeedIntakeForm } from "@/components/customer/NeedIntakeForm";
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
@@ -24,18 +25,23 @@ export default async function NewNeedPage() {
     });
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-2xl">
+      <div className="mb-8">
+        <BookingStepper current="describe" />
+      </div>
       <PageHeader
         title="Describe your problem"
         subtitle="Tell us what you're dealing with and we'll match you with a few people who've been there."
       />
-      <NeedIntakeForm
-        industries={roots.map((r) => ({
-          id: r.id,
-          name: r.name,
-          children: r.children.map((c) => ({ id: c.id, name: c.name })),
-        }))}
-      />
+      <Card>
+        <NeedIntakeForm
+          industries={roots.map((r) => ({
+            id: r.id,
+            name: r.name,
+            children: r.children.map((c) => ({ id: c.id, name: c.name })),
+          }))}
+        />
+      </Card>
     </div>
   );
 }
