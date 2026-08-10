@@ -43,7 +43,7 @@ export default async function MessagesPage({
     prisma.booking.findUnique({
       where: { id: params.bookingId },
       select: {
-        advisor: { select: { userId: true, user: { select: { email: true } } } },
+        advisor: { select: { userId: true, avatarUrl: true, user: { select: { email: true } } } },
         customer: { select: { userId: true, user: { select: { email: true } } } },
       },
     }),
@@ -55,6 +55,8 @@ export default async function MessagesPage({
     ? parties?.customer.user.email
     : parties?.advisor.user.email;
   const counterpartHandle = counterpartEmail?.split("@")[0] ?? "advisor";
+  // Only advisors have a photo field; a customer counterpart stays a monogram.
+  const counterpartSrc = viewerIsAdvisor ? undefined : parties?.advisor.avatarUrl ?? undefined;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -72,7 +74,7 @@ export default async function MessagesPage({
       {nextSession && isParty && (
         <Card className="mb-page-gap flex items-center justify-between py-4">
           <span className="flex items-center gap-3">
-            <Avatar name={counterpartHandle} gradient="pink-amber" size={40} />
+            <Avatar name={counterpartHandle} src={counterpartSrc} gradient="pink-amber" size={40} />
             <span className="text-body text-gray-600">
               <span className="font-semibold text-ink">{counterpartHandle}</span>
               <span className="mx-1.5 text-gray-300">·</span>
@@ -107,7 +109,7 @@ export default async function MessagesPage({
                   )}
                 >
                   {!mine && (
-                    <Avatar name={counterpartHandle} gradient="pink-amber" size={28} />
+                    <Avatar name={counterpartHandle} src={counterpartSrc} gradient="pink-amber" size={28} />
                   )}
                   <div
                     className={cn(

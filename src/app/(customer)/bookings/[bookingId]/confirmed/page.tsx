@@ -55,7 +55,7 @@ export default async function BookingConfirmedPage({
 
       <Card>
         <div className="flex items-center gap-3">
-          <Avatar name={advisorName} gradient="brand" size={52} />
+          <Avatar name={advisorName} src={booking.advisor.avatarUrl} gradient="brand" size={52} />
           <div>
             <p className="text-body font-semibold text-ink">Session with {advisorName}</p>
             {when && (

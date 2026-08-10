@@ -77,6 +77,56 @@ export async function signUp(
   redirect(roleHome(role));
 }
 
+export interface ResetRequestState {
+  error?: string;
+  sent?: boolean;
+}
+
+/**
+ * Step 1 of password reset: email the user a recovery link. The link lands on
+ * /auth/callback (type=recovery), which exchanges it for a short-lived session
+ * and forwards to /reset-password. We always report success to avoid leaking
+ * which emails have accounts.
+ */
+export async function requestPasswordReset(
+  _prev: ResetRequestState,
+  formData: FormData,
+): Promise<ResetRequestState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Enter your email." };
+
+  const supabase = createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteOrigin()}/auth/callback?next=/reset-password`,
+  });
+  // Only surface genuine configuration/transport errors, not "no such user".
+  if (error && error.status && error.status >= 500) {
+    return { error: error.message };
+  }
+  return { sent: true };
+}
+
+/**
+ * Step 2 of password reset: set a new password. Requires the recovery session
+ * established by the callback; without it Supabase rejects the update and the
+ * page has already bounced the user back to /forgot-password.
+ */
+export async function updatePassword(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) {
+    return { error: "Use a password of at least 8 characters." };
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  redirect("/login?reset=1");
+}
+
 /** Sign out and return to the landing page. */
 export async function signOut() {
   const supabase = createClient();

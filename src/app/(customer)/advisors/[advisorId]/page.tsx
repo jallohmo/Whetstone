@@ -64,7 +64,7 @@ export default async function AdvisorProfilePage({
       <Card className="overflow-hidden p-0">
         <div className="p-card">
           <div className="flex items-start gap-4">
-            <Avatar name={handle} gradient="brand" size={72} />
+            <Avatar name={handle} src={advisor.avatarUrl} gradient="brand" size={72} />
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div>
