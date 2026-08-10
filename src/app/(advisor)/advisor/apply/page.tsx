@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader, Card, Eyebrow } from "@/components/ui";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AdvisorOnboardingForm } from "@/components/advisor/AdvisorOnboardingForm";
 import { getCurrentUser } from "@/lib/auth";
@@ -55,6 +55,9 @@ export default async function AdvisorApplyPage() {
 
   return (
     <div>
+      <div className="mb-2">
+        <Eyebrow tone="blue">Step 1 of 3 · Application</Eyebrow>
+      </div>
       <PageHeader
         title={existing ? "Add the missing details" : "Complete your advisor profile"}
         subtitle="Worth doing properly — this is what customers and our verification team see."
