@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { reportError } from "@/lib/observability";
 import type { UserRole } from "@prisma/client";
 
 export interface CurrentUser {
@@ -36,9 +37,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     });
     return row ?? null;
   } catch (err) {
-    // Surfaced in server logs (e.g. Vercel runtime logs) so the real cause is
+    // Surfaced in server logs (and Sentry, once configured) so the real cause is
     // still diagnosable — the UI just degrades instead of white-screening.
-    console.error("getCurrentUser: failed to resolve current user —", err);
+    reportError("getCurrentUser: failed to resolve current user", err);
     return null;
   }
 });

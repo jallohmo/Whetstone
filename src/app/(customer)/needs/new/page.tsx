@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/ui";
 import { NeedIntakeForm } from "@/components/customer/NeedIntakeForm";
 import { prisma } from "@/lib/prisma";
+import { reportError } from "@/lib/observability";
 
 // Reads the taxonomy at request time (and avoids a build-time DB dependency).
 export const dynamic = "force-dynamic";
@@ -16,9 +17,9 @@ export default async function NewNeedPage() {
     })
     .catch((err) => {
       // Degrade to an empty selector rather than crashing the page, but surface
-      // the real cause in server logs (e.g. Vercel runtime logs) — a silently
-      // empty dropdown is otherwise indistinguishable from an unreachable DB.
-      console.error("NewNeedPage: failed to load industry taxonomy —", err);
+      // the real cause in server logs / Sentry — a silently empty dropdown is
+      // otherwise indistinguishable from an unreachable DB.
+      reportError("NewNeedPage: failed to load industry taxonomy", err);
       return [];
     });
 
