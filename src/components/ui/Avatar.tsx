@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import type { ReactNode } from "react";
+import { AvatarImage } from "./AvatarImage";
 
 /**
  * Gradient monogram avatar — the production `Avatar` renders a real photo when
@@ -45,6 +46,7 @@ function pickGradient(seed: string): AvatarGradient {
 export function Avatar({
   name,
   initials,
+  src,
   size = 40,
   gradient,
   ring = false,
@@ -54,6 +56,8 @@ export function Avatar({
   name?: string;
   /** Override the derived initials (e.g. a handle's monogram). */
   initials?: string;
+  /** Photo URL. Falls back to the gradient monogram if absent or it fails to load. */
+  src?: string | null;
   /** Pixel diameter. */
   size?: number;
   gradient?: AvatarGradient;
@@ -66,7 +70,7 @@ export function Avatar({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-pill font-semibold text-white",
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-pill font-semibold text-white",
         ring && "ring-2 ring-white",
         className,
       )}
@@ -79,6 +83,7 @@ export function Avatar({
       aria-hidden
     >
       {label}
+      {src && <AvatarImage src={src} alt={name} />}
     </span>
   );
 }

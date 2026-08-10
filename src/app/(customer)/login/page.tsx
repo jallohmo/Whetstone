@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { next?: string; checkEmail?: string; error?: string };
+  searchParams: { next?: string; checkEmail?: string; error?: string; reset?: string };
 }) {
   const user = await getCurrentUser();
   if (user) redirect(searchParams.next || roleHome(user.role));
@@ -29,6 +29,11 @@ export default async function LoginPage({
           {searchParams.checkEmail && (
             <div className="mt-5 rounded-lg border border-green-500/30 bg-green-100 p-4 text-sm text-green-700">
               Check your email for a confirmation link, then come back and sign in.
+            </div>
+          )}
+          {searchParams.reset && (
+            <div className="mt-5 rounded-lg border border-green-500/30 bg-green-100 p-4 text-sm text-green-700">
+              Your password is updated — sign in with your new one.
             </div>
           )}
           {searchParams.error && (

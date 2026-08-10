@@ -2,12 +2,19 @@ import Link from "next/link";
 import { ArrowRight, BadgeCheck, Play, ShieldCheck, Target } from "lucide-react";
 import { Eyebrow } from "@/components/ui";
 import { Avatar, AvatarGroup } from "@/components/ui/Avatar";
+import { Money } from "@/components/shared/Money";
+import { getLandingData } from "@/lib/featured";
 
 // Screen 1 — Landing/homepage.
 // Plain-spoken, "describe your problem" entry point. Weathered and credible,
-// not wellness-soft and not consulting-slick. Renders inside the customer pill-nav
-// shell; the hero carries the marketing story and a floating "top match" preview.
-export default function LandingPage() {
+// not wellness-soft and not consulting-slick. The hero's "top match" preview and
+// social proof are driven by REAL platform data (see lib/featured), with honest
+// fallbacks before there's data to show.
+export const dynamic = "force-dynamic";
+
+export default async function LandingPage() {
+  const { featured, ring, matchedCount } = await getLandingData();
+
   return (
     <div className="flex flex-col gap-16">
       {/* Hero */}
@@ -41,74 +48,119 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="mt-8 flex items-center gap-3">
-            <AvatarGroup>
-              <Avatar initials="MC" gradient="blue-300" size={36} ring />
-              <Avatar initials="RG" gradient="pink-amber" size={36} ring />
-              <Avatar initials="DL" gradient="cyan-green" size={36} ring />
-              <Avatar initials="+" gradient="purple-blue" size={36} ring />
-            </AvatarGroup>
+            {ring.length > 0 && (
+              <AvatarGroup>
+                {ring.map((m, i) => (
+                  <Avatar key={i} initials={m.initials} src={m.src} size={36} ring />
+                ))}
+              </AvatarGroup>
+            )}
             <p className="text-sm text-gray-600">
-              <span className="font-semibold text-ink">1,200+ owners</span> matched
-              with an expert this year
+              {matchedCount > 0 ? (
+                <>
+                  <span className="font-semibold text-ink">
+                    {matchedCount.toLocaleString()} {matchedCount === 1 ? "owner" : "owners"}
+                  </span>{" "}
+                  matched with an expert
+                </>
+              ) : (
+                "Be one of the first owners matched with an expert."
+              )}
             </p>
           </div>
         </div>
 
-        {/* Floating "Top match" preview card, with a second card peeking behind. */}
+        {/* Floating "Top match" preview card, with a second card peeking behind it. */}
         <div className="relative mx-auto w-full max-w-md lg:mx-0">
           <div
             className="absolute -bottom-4 -right-3.5 left-6 top-6 rounded-xl border border-gray-200 bg-white opacity-60 shadow-card"
             aria-hidden
           />
-          <div className="relative rounded-xl bg-white p-6 shadow-float">
-            <div className="flex items-center justify-between">
-              <Eyebrow>Top match</Eyebrow>
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-                <BadgeCheck size={14} strokeWidth={2} />
-                Verified
-              </span>
-            </div>
-            <div className="mt-4 flex items-start gap-4">
-              <Avatar initials="MC" gradient="brand" size={60} />
-              <div className="min-w-0">
-                <p className="text-h3 text-ink">Margaret Chen</p>
-                <p className="mt-0.5 text-sm text-gray-600">
-                  Ex-COO · Manufacturing &amp; operations
+          {featured ? (
+            <div className="relative rounded-xl bg-white p-6 shadow-float">
+              <div className="flex items-center justify-between">
+                <Eyebrow>Top match</Eyebrow>
+                <span className="inline-flex items-center gap-1.5 rounded-pill bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                  <BadgeCheck size={14} strokeWidth={2} />
+                  Verified
+                </span>
+              </div>
+              <div className="mt-4 flex items-start gap-4">
+                <Avatar name={featured.handle} src={featured.avatarUrl} gradient="brand" size={60} />
+                <div className="min-w-0">
+                  <p className="text-h3 text-ink">{featured.handle}</p>
+                  <p className="mt-0.5 text-sm text-gray-600">
+                    {featured.headline ?? `${featured.yearsExperience} years' experience`}
+                  </p>
+                  <p className="mt-1.5 text-sm text-gray-700">
+                    {featured.avgRating != null && (
+                      <>
+                        <span className="text-amber-500">★</span> {featured.avgRating.toFixed(1)} ·{" "}
+                      </>
+                    )}
+                    {featured.sessionCount > 0 && `${featured.sessionCount} sessions · `}
+                    {featured.yearsExperience} yrs
+                  </p>
+                </div>
+              </div>
+              <div className="my-5 border-t border-dashed border-gray-300" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500">Focus</p>
+                  <p className="mt-0.5 text-body font-semibold text-ink">
+                    {featured.focus ?? "Your industry"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Package</p>
+                  <p className="mt-0.5 text-body font-semibold text-ink">
+                    {featured.packageLabel ?? "Bounded · insured"}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-between">
+                <p className="text-body">
+                  {featured.priceCents != null && featured.currency ? (
+                    <>
+                      <Money
+                        amountMinor={featured.priceCents}
+                        currency={featured.currency}
+                        className="font-semibold text-ink"
+                      />
+                      <span className="text-gray-500"> / package</span>
+                    </>
+                  ) : (
+                    <span className="text-gray-500">Insured session</span>
+                  )}
                 </p>
-                <p className="mt-1.5 text-sm text-gray-700">
-                  <span className="text-amber-500">★</span> 4.9 · 210 sessions · 34 yrs
-                </p>
+                <Link
+                  href={`/advisors/${featured.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
+                >
+                  View profile
+                  <ArrowRight size={15} strokeWidth={2} />
+                </Link>
               </div>
             </div>
-            <div className="my-5 border-t border-dashed border-gray-300" />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-500">Focus</p>
-                <p className="mt-0.5 text-body font-semibold text-ink">
-                  Cash flow &amp; supplier terms
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Package</p>
-                <p className="mt-0.5 text-body font-semibold text-ink">
-                  3 sessions · insured
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex items-center justify-between">
-              <p className="text-body">
-                <span className="ws-mono font-semibold text-ink">$540</span>
-                <span className="text-gray-500"> / package</span>
+          ) : (
+            // No verified advisors yet — a genuine invitation, not a fake person.
+            <div className="relative rounded-xl bg-white p-6 shadow-float">
+              <Eyebrow>How matching works</Eyebrow>
+              <p className="mt-4 text-h3 text-ink">Tell us the problem. We find the person.</p>
+              <p className="mt-2 text-body text-gray-600">
+                Describe what you&apos;re dealing with and our team hand-picks verified
+                experts who&apos;ve solved exactly it — no directory to trawl, no
+                open-ended hours.
               </p>
               <Link
                 href="/needs/new"
-                className="inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
+                className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
               >
-                View profile
+                Describe your problem
                 <ArrowRight size={15} strokeWidth={2} />
               </Link>
             </div>
-          </div>
+          )}
         </div>
       </section>
 

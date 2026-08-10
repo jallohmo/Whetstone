@@ -96,7 +96,7 @@ export default async function MatchesPage({
           return (
             <Card key={a.id}>
               <div className="flex items-start gap-4">
-                <Avatar name={handle} size={52} />
+                <Avatar name={handle} src={a.avatarUrl} size={52} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div>

@@ -46,7 +46,17 @@ export function AuthForm({
         </Field>
 
         <div className="mb-page-gap">
-          <Label>Password</Label>
+          <div className="flex items-center justify-between">
+            <Label>Password</Label>
+            {!isSignup && (
+              <a
+                href="/forgot-password"
+                className="mb-1.5 text-sm font-semibold text-brand-blue hover:underline"
+              >
+                Forgot?
+              </a>
+            )}
+          </div>
           <Input
             type="password"
             name="password"
@@ -69,8 +79,14 @@ export function AuthForm({
             />
             <span>
               I agree to the{" "}
-              <span className="font-semibold text-ink">Terms</span> and{" "}
-              <span className="font-semibold text-ink">Privacy Policy</span>.
+              <a href="/terms" target="_blank" className="font-semibold text-brand-blue hover:underline">
+                Terms
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" className="font-semibold text-brand-blue hover:underline">
+                Privacy Policy
+              </a>
+              .
             </span>
           </label>
         )}

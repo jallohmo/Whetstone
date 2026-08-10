@@ -2,12 +2,17 @@ import { BadgeCheck, ShieldCheck, Target } from "lucide-react";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { Avatar } from "@/components/ui/Avatar";
 import { Eyebrow } from "@/components/ui";
+import { getFeaturedTestimonial } from "@/lib/featured";
 
 /**
  * Left brand panel for Sign in (1b): solid brand blue, white text, two soft
- * translucent circles bleeding off the corners, wordmark, and a testimonial.
+ * translucent circles bleeding off the corners, wordmark, and — when a real
+ * customer review exists — a genuine testimonial. With no reviews yet it shows a
+ * plain brand line rather than a fabricated quote.
  */
-export function AuthBrandPanel() {
+export async function AuthBrandPanel() {
+  const testimonial = await getFeaturedTestimonial();
+
   return (
     <div className="relative hidden flex-col justify-between overflow-hidden bg-brand-blue p-8 text-white md:flex">
       <span
@@ -22,17 +27,25 @@ export function AuthBrandPanel() {
         <Wordmark tone="onDark" />
       </div>
       <div className="relative">
-        <p className="text-body-lg font-medium leading-relaxed">
-          &ldquo;Two sessions with Margaret saved us a supplier relationship — and
-          about $40k.&rdquo;
-        </p>
-        <div className="mt-4 flex items-center gap-3">
-          <Avatar initials="JP" gradient="pink-amber" size={40} />
-          <div className="text-sm">
-            <p className="font-semibold">Jordan Park</p>
-            <p className="text-white/70">Founder, Halcyon Goods</p>
-          </div>
-        </div>
+        {testimonial ? (
+          <>
+            <p className="text-body-lg font-medium leading-relaxed">
+              &ldquo;{testimonial.quote}&rdquo;
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <Avatar initials={testimonial.initials} gradient={testimonial.gradient} size={40} />
+              <div className="text-sm">
+                <p className="font-semibold">{testimonial.name}</p>
+                <p className="text-white/70">{testimonial.meta}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="max-w-xs text-body-lg font-medium leading-relaxed">
+            Bounded, insured advisory sessions with people who&apos;ve actually run a
+            business before.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -40,7 +53,7 @@ export function AuthBrandPanel() {
 
 /**
  * Right value panel for Create account (1c): gray-50 with a left hairline,
- * "what you get" trio, and a small testimonial card.
+ * "what you get" trio, and — when available — a real review at the bottom.
  */
 const PERKS = [
   { icon: BadgeCheck, tile: "bg-brand-blue-100 text-brand-blue", title: "Verified experts", body: "Identity- and reference-checked before they can take a booking." },
@@ -48,7 +61,9 @@ const PERKS = [
   { icon: ShieldCheck, tile: "bg-[#e2f8fd] text-brand-cyan", title: "Insured sessions", body: "Every engagement is covered by our indemnity policy." },
 ];
 
-export function AuthValuePanel() {
+export async function AuthValuePanel() {
+  const testimonial = await getFeaturedTestimonial();
+
   return (
     <div className="hidden flex-col justify-between border-l border-gray-200 bg-gray-50 p-8 md:flex">
       <div>
@@ -67,13 +82,24 @@ export function AuthValuePanel() {
           ))}
         </ul>
       </div>
-      <div className="mt-6 rounded-lg bg-white p-4 shadow-card">
-        <p className="text-body text-ink">&ldquo;I had a shortlist in an afternoon.&rdquo;</p>
-        <div className="mt-3 flex items-center gap-2.5">
-          <Avatar initials="DL" gradient="cyan-green" size={32} />
-          <p className="text-sm text-gray-500">Dana Liu · Retail</p>
+      {testimonial ? (
+        <div className="mt-6 rounded-lg bg-white p-4 shadow-card">
+          <p className="text-body text-ink">&ldquo;{testimonial.quote}&rdquo;</p>
+          <div className="mt-3 flex items-center gap-2.5">
+            <Avatar initials={testimonial.initials} gradient={testimonial.gradient} size={32} />
+            <p className="text-sm text-gray-500">
+              {testimonial.name} · {testimonial.meta}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-6 rounded-lg bg-white p-4 shadow-card">
+          <p className="text-body text-ink">
+            No account needed to see your matches — you only sign up when you decide
+            to book.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

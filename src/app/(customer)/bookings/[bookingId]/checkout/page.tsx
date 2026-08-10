@@ -54,7 +54,7 @@ export default async function CheckoutPage({
 
       <Card>
         <div className="mb-5 flex items-center gap-3 border-b border-dashed border-gray-300 pb-5">
-          <Avatar name={advisorName} gradient="brand" size={44} />
+          <Avatar name={advisorName} src={booking.advisor.avatarUrl} gradient="brand" size={44} />
           <div>
             <p className="text-body font-semibold text-ink">
               {booking.sessionCount === 1 ? "Single session" : `${booking.sessionCount} sessions`} with {advisorName}
