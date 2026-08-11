@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageHeader, Card, Eyebrow } from "@/components/ui";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { AdvisorRolePrompt } from "@/components/auth/AdvisorRolePrompt";
 import { AdvisorOnboardingForm } from "@/components/advisor/AdvisorOnboardingForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -35,8 +36,36 @@ export default async function AdvisorApplyPage() {
     );
   }
 
-  // Signed in but wrong role (a customer landed here) -> send home.
-  if (user.role !== "ADVISOR") redirect("/");
+  // Ops accounts don't belong in the advisor application.
+  if (user.role === "OPS_ADMIN") redirect("/");
+
+  // A CUSTOMER on the application — usually after signing in with Google, which
+  // always creates a customer account. Offer a one-click switch to ADVISOR rather
+  // than bouncing them home; the page then re-renders into the form below.
+  if (user.role === "CUSTOMER") {
+    return (
+      <div>
+        <PageHeader
+          title="Become a Whetstone advisor"
+          subtitle="You're signed in as a customer. Continue as an advisor to complete the short application — verification is what makes your profile trusted."
+        />
+        <Card>
+          <p className="mb-4 text-body text-gray-600">
+            Signed in as <span className="font-semibold text-ink">{user.email}</span>.
+            Switching to an advisor account lets you build a public profile and take
+            bookings once you&apos;re verified.
+          </p>
+          <AdvisorRolePrompt />
+        </Card>
+        <p className="mt-6 text-sm text-gray-500">
+          Didn&apos;t mean to?{" "}
+          <Link href="/" className="font-semibold text-brand-blue hover:underline">
+            Go back home
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   // Already applied -> show status instead of re-collecting everything.
   const existing = await prisma.advisorProfile.findUnique({
