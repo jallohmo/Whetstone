@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { AdvisorNav } from "@/components/advisor/AdvisorNav";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Wordmark } from "@/components/ui/Wordmark";
-import { ProfileMenu } from "@/components/shared/ProfileMenu";
+import { Avatar } from "@/components/ui/Avatar";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -10,6 +12,9 @@ import { prisma } from "@/lib/prisma";
  * gray-50 canvas. Larger targets, plain language, forgiving interactions — the
  * audience spans a wide range of digital fluency. Do NOT reuse the customer or
  * ops visual language here.
+ *
+ * Identity (photo + name + email) sits under the wordmark; all navigation lives
+ * in the left rail (AdvisorNav); the bottom is a plain Sign out.
  */
 export default async function AdvisorLayout({
   children,
@@ -28,32 +33,36 @@ export default async function AdvisorLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="hidden w-[264px] shrink-0 flex-col border-r border-gray-150 bg-white p-5 md:flex">
-        <Link href="/" aria-label="Whetstone home" className="mb-6 block transition hover:opacity-90">
+        <Link href="/" aria-label="Whetstone home" className="mb-5 block transition hover:opacity-90">
           <Wordmark size="sm" />
         </Link>
 
         {user ? (
-          // Signed-in advisor: full dashboard nav + profile chip.
           <>
-            <p className="mb-3 px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-              Advisor
-            </p>
+            {/* Identity block — photo, name, email. */}
+            <div className="mb-5 flex items-center gap-3 border-b border-gray-150 pb-5">
+              <Avatar name={handle} src={profile?.avatarUrl ?? user.avatarUrl} gradient="brand" size={40} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">{handle}</p>
+                <p className="truncate text-xs text-gray-500">{user.email}</p>
+              </div>
+            </div>
+
             <AdvisorNav />
 
             <div className="mt-auto border-t border-gray-150 pt-4">
-              <ProfileMenu
-                role="advisor"
-                displayName={handle}
-                email={user.email}
-                avatarUrl={profile?.avatarUrl ?? user.avatarUrl}
-                verified={profile?.verificationStatus === "VERIFIED"}
-                publicProfileId={profile?.id}
-              />
+              <SignOutButton
+                aria-label="Sign out"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-body font-medium text-red-700 transition duration-DEFAULT ease-soft hover:bg-red-100/50"
+              >
+                <LogOut size={18} strokeWidth={2} />
+                Sign out
+              </SignOutButton>
             </div>
           </>
         ) : (
           // Logged-out prospect (only reachable on /advisor/apply): a slim shell —
-          // no dashboard nav or profile chip until they have an account.
+          // no dashboard nav or identity until they have an account.
           <div className="mt-auto border-t border-gray-150 pt-4">
             <p className="text-sm text-gray-500">
               Already an advisor?{" "}
