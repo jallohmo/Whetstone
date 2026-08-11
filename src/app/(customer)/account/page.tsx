@@ -7,8 +7,11 @@ import { PersonalInformation } from "@/components/account/PersonalInformation";
 import { SecuritySettings } from "@/components/account/SecuritySettings";
 import { NotificationSettings } from "@/components/account/NotificationSettings";
 import { PaymentMethods } from "@/components/account/PaymentMethods";
-import { DangerZone } from "@/components/account/DangerZone";
+import { CustomerDangerZone } from "@/components/account/CustomerDangerZone";
 import { getCurrentUser } from "@/lib/auth";
+import { getMfaStatus } from "@/lib/mfa";
+import { listPaymentMethods } from "@/lib/actions/payment-methods";
+import { stripeEnabled } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { keysForRole, resolvePrefs } from "@/lib/notifications";
 
@@ -36,6 +39,15 @@ export default async function CustomerAccountPage() {
   if (!row) redirect("/login?next=/account");
 
   const prefs = resolvePrefs("CUSTOMER", row.notificationPrefs);
+  const mfa = await getMfaStatus();
+  const { cards } = await listPaymentMethods();
+  const hasProfile = Boolean(row.customerProfile);
+  const canAddCard = stripeEnabled && hasProfile;
+  const cardReason = !stripeEnabled
+    ? "Card payments aren't configured yet."
+    : !hasProfile
+      ? "You can save a card after your first booking."
+      : undefined;
   const displayName = row.fullName ?? row.email.split("@")[0];
 
   return (
@@ -70,7 +82,7 @@ export default async function CustomerAccountPage() {
           </AccountSection>
 
           <AccountSection id="security" title="Security">
-            <SecuritySettings />
+            <SecuritySettings twoFactorEnabled={mfa.enabled} twoFactorFactorId={mfa.factorId} />
           </AccountSection>
 
           <AccountSection id="notifications" title="Notifications">
@@ -78,11 +90,11 @@ export default async function CustomerAccountPage() {
           </AccountSection>
 
           <AccountSection id="payments" title="Payment methods">
-            <PaymentMethods />
+            <PaymentMethods cards={cards} canAdd={canAddCard} reason={cardReason} />
           </AccountSection>
 
           <AccountSection id="danger" title="Delete account" tone="danger">
-            <DangerZone role="customer" />
+            <CustomerDangerZone />
           </AccountSection>
         </div>
       </div>

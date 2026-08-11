@@ -47,6 +47,9 @@ model User {
   // Per-key notification toggles (role-agnostic map, e.g. {"newMessages": true}).
   // Defaults live in code (lib/notifications) so an absent value reads as the default.
   notificationPrefs Json?          @map("notification_prefs")
+  // Hashed single-use 2FA recovery codes (never the plaintext). Consuming one
+  // disables the TOTP factor so a user who lost their authenticator can sign in.
+  mfaRecoveryCodes  String[]       @default([]) @map("mfa_recovery_codes")
   createdAt       DateTime         @default(now()) @map("created_at")
   advisorProfile  AdvisorProfile?
   customerProfile CustomerProfile?

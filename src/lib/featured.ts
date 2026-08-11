@@ -49,7 +49,7 @@ export async function getLandingData(): Promise<LandingData> {
   try {
     const [verified, cheapest, matchedCount] = await Promise.all([
       prisma.advisorProfile.findMany({
-        where: { verificationStatus: "VERIFIED" },
+        where: { verificationStatus: "VERIFIED", deactivatedAt: null },
         orderBy: { createdAt: "desc" },
         take: 6,
         include: {
