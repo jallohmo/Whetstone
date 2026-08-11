@@ -7,7 +7,7 @@ const description =
 
 export const metadata: Metadata = {
   // Absolute base for Open Graph / canonical URLs. Update if the domain changes.
-  metadataBase: new URL("https://whetstone.au"),
+  metadataBase: new URL("https://app.whetstone.au"),
   title,
   description,
   openGraph: {
