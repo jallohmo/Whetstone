@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button, Field, Input, Label } from "@/components/ui";
 import { signIn, signUp, type AuthFormState } from "@/lib/actions/auth";
 import { GoogleButton } from "./GoogleButton";
+import { LinkedInButton } from "./LinkedInButton";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 
 /**
@@ -106,7 +107,10 @@ export function AuthForm({
         <span className="h-px flex-1 bg-gray-200" />
       </div>
 
-      <GoogleButton next={next} />
+      <div className="flex flex-col gap-2">
+        <GoogleButton next={next} />
+        <LinkedInButton next={next} />
+      </div>
     </div>
   );
 }
