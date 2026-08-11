@@ -52,7 +52,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (needsAdvisor && role !== "ADVISOR" && role !== "OPS_ADMIN") {
-    return NextResponse.redirect(new URL("/", request.url));
+    // Signed-in non-advisor: send them to the application (which offers a
+    // one-click "Continue as an advisor") rather than silently bouncing home.
+    // /advisor/apply is exempt from this gate, so there's no redirect loop.
+    return NextResponse.redirect(new URL("/advisor/apply", request.url));
   }
 
   if (needsOps && role !== "OPS_ADMIN") {
