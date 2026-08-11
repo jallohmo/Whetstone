@@ -31,21 +31,41 @@ export default async function AdvisorLayout({
         <Link href="/" aria-label="Whetstone home" className="mb-6 block transition hover:opacity-90">
           <Wordmark size="sm" />
         </Link>
-        <p className="mb-3 px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-          Advisor
-        </p>
-        <AdvisorNav />
 
-        <div className="mt-auto border-t border-gray-150 pt-4">
-          <ProfileMenu
-            role="advisor"
-            displayName={handle}
-            email={user?.email ?? ""}
-            avatarUrl={profile?.avatarUrl ?? user?.avatarUrl}
-            verified={profile?.verificationStatus === "VERIFIED"}
-            publicProfileId={profile?.id}
-          />
-        </div>
+        {user ? (
+          // Signed-in advisor: full dashboard nav + profile chip.
+          <>
+            <p className="mb-3 px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-gray-400">
+              Advisor
+            </p>
+            <AdvisorNav />
+
+            <div className="mt-auto border-t border-gray-150 pt-4">
+              <ProfileMenu
+                role="advisor"
+                displayName={handle}
+                email={user.email}
+                avatarUrl={profile?.avatarUrl ?? user.avatarUrl}
+                verified={profile?.verificationStatus === "VERIFIED"}
+                publicProfileId={profile?.id}
+              />
+            </div>
+          </>
+        ) : (
+          // Logged-out prospect (only reachable on /advisor/apply): a slim shell —
+          // no dashboard nav or profile chip until they have an account.
+          <div className="mt-auto border-t border-gray-150 pt-4">
+            <p className="text-sm text-gray-500">
+              Already an advisor?{" "}
+              <Link
+                href="/login?next=/advisor/verification-status"
+                className="font-semibold text-brand-blue hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        )}
       </aside>
 
       <main className="flex-1 px-6 py-8 md:px-[44px] md:py-[34px]">
