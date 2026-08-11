@@ -1,9 +1,10 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { keysForRole } from "@/lib/notifications";
 
 export interface AccountFormState {
@@ -163,6 +164,100 @@ export async function updateNotificationPrefs(formData: FormData): Promise<void>
   });
   revalidatePath("/account");
   revalidatePath("/advisor/account");
+}
+
+/**
+ * Advisor "Leave the platform" (14c). Soft-deactivation: hides the profile from
+ * matches/search/booking and blocks new bookings, but keeps the record and lets
+ * the advisor reactivate. Blocked while there are still active bookings to honour.
+ */
+export async function deactivateAdvisor(): Promise<AccountFormState> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADVISOR") return { error: "Advisors only." };
+
+  const profile = await prisma.advisorProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  if (!profile) return { error: "No advisor profile found." };
+
+  const active = await prisma.booking.count({
+    where: { advisorId: profile.id, status: { in: ["pending_payment", "confirmed", "in_progress"] } },
+  });
+  if (active > 0) {
+    return { error: `You have ${active} active booking${active === 1 ? "" : "s"} to complete or cancel first.` };
+  }
+
+  await prisma.advisorProfile.update({
+    where: { id: profile.id },
+    data: { deactivatedAt: new Date() },
+  });
+  revalidatePath("/advisor/account");
+  return { ok: true };
+}
+
+/** Reverse a deactivation — the profile becomes bookable again. */
+export async function reactivateAdvisor(): Promise<AccountFormState> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "ADVISOR") return { error: "Advisors only." };
+  await prisma.advisorProfile.updateMany({
+    where: { userId: user.id },
+    data: { deactivatedAt: null },
+  });
+  revalidatePath("/advisor/account");
+  return { ok: true };
+}
+
+/**
+ * Customer account deletion (9c). Permanent and irreversible. Deliberately
+ * conservative: blocked while there are active bookings, and refused outright if
+ * the account has any booking history — those carry payment/audit records we must
+ * retain (the user is told to contact support for that case). For a clean account
+ * it detaches any guest needs, deletes the profile + mirror row, and removes the
+ * auth user via the service role, then signs out.
+ */
+export async function deleteAccount(): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Sign in first." };
+  if (user.role !== "CUSTOMER") return { error: "Only customer accounts can be deleted here." };
+
+  const profile = await prisma.customerProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+
+  if (profile) {
+    const bookingCount = await prisma.booking.count({ where: { customerId: profile.id } });
+    if (bookingCount > 0) {
+      return {
+        error:
+          "Your account has booking history we're required to keep. Contact support to close it.",
+      };
+    }
+  }
+
+  // Clean account: detach guest needs (preserve ops match records), drop the
+  // profile and the mirror row.
+  await prisma.$transaction(async (tx) => {
+    if (profile) {
+      await tx.need.updateMany({ where: { customerId: profile.id }, data: { customerId: null } });
+      await tx.customerProfile.delete({ where: { id: profile.id } });
+    }
+    await tx.user.delete({ where: { id: user.id } });
+  });
+
+  // Remove the auth user (best-effort — the mirror is already gone, so access is
+  // revoked regardless).
+  try {
+    const admin = createServiceRoleClient();
+    await admin.auth.admin.deleteUser(user.id);
+  } catch {
+    /* mirror row already deleted; the account can no longer be used */
+  }
+
+  const supabase = createClient();
+  await supabase.auth.signOut().catch(() => {});
+  redirect("/");
 }
 
 /** Advisor payout schedule preference (14c). */

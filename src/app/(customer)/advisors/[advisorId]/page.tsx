@@ -34,7 +34,7 @@ export default async function AdvisorProfilePage({
     }),
   ]);
 
-  if (!advisor || advisor.verificationStatus !== "VERIFIED") notFound();
+  if (!advisor || advisor.verificationStatus !== "VERIFIED" || advisor.deactivatedAt) notFound();
 
   const ratings = advisor.bookings
     .map((b) => b.review?.rating)

@@ -35,7 +35,7 @@ export default async function MatchesPage({
 
   const advisors = chosenIds.length
     ? await prisma.advisorProfile.findMany({
-        where: { id: { in: chosenIds } },
+        where: { id: { in: chosenIds }, deactivatedAt: null },
         include: {
           specialtyTags: true,
           user: true,

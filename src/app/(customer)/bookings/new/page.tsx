@@ -28,7 +28,7 @@ export default async function NewBookingPage({
   const advisor = advisorId
     ? await prisma.advisorProfile.findUnique({ where: { id: advisorId } })
     : null;
-  if (!advisor || advisor.verificationStatus !== "VERIFIED") notFound();
+  if (!advisor || advisor.verificationStatus !== "VERIFIED" || advisor.deactivatedAt) notFound();
 
   const [packages, slots] = await Promise.all([
     prisma.package.findMany({ where: { active: true }, orderBy: { priceCents: "asc" } }),

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { regenerateRecoveryCodes, clearRecoveryCodes } from "@/lib/actions/mfa";
 
 /**
  * Two-factor (TOTP) control in the Security card. Fully wired to Supabase MFA:
@@ -24,6 +25,7 @@ export function TwoFactorSetting({
   const [error, setError] = useState<string | null>(null);
   const [enroll, setEnroll] = useState<{ factorId: string; qr: string; secret: string } | null>(null);
   const [code, setCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
 
   async function startEnroll() {
     setBusy(true);
@@ -60,14 +62,34 @@ export function TwoFactorSetting({
       challengeId: challenge.id,
       code: code.trim(),
     });
-    setBusy(false);
     if (verifyError) {
+      setBusy(false);
       setError("That code didn't match. Try the current one from your app.");
       return;
     }
+    // Freshly enabled — issue recovery codes to show once.
+    try {
+      const { codes } = await regenerateRecoveryCodes();
+      setRecoveryCodes(codes);
+    } catch {
+      /* non-fatal: 2FA is on even if codes couldn't be issued */
+    }
+    setBusy(false);
     setEnroll(null);
     setCode("");
     router.refresh();
+  }
+
+  async function regenerate() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { codes } = await regenerateRecoveryCodes();
+      setRecoveryCodes(codes);
+    } catch {
+      setError("Couldn't generate recovery codes.");
+    }
+    setBusy(false);
   }
 
   async function cancelEnroll() {
@@ -86,11 +108,14 @@ export function TwoFactorSetting({
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       setError(error.message);
       return;
     }
+    await clearRecoveryCodes().catch(() => {});
+    setRecoveryCodes(null);
+    setBusy(false);
     router.refresh();
   }
 
@@ -112,14 +137,24 @@ export function TwoFactorSetting({
         </div>
 
         {enabled ? (
-          <button
-            type="button"
-            onClick={disable}
-            disabled={busy}
-            className="shrink-0 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:border-gray-300 disabled:opacity-50"
-          >
-            {busy ? "…" : "Turn off"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={regenerate}
+              disabled={busy}
+              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-ink transition hover:border-gray-300 disabled:opacity-50"
+            >
+              Recovery codes
+            </button>
+            <button
+              type="button"
+              onClick={disable}
+              disabled={busy}
+              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:border-gray-300 disabled:opacity-50"
+            >
+              {busy ? "…" : "Turn off"}
+            </button>
+          </div>
         ) : (
           !enroll && (
             <button
@@ -172,6 +207,38 @@ export function TwoFactorSetting({
             </button>
             <button type="button" onClick={cancelEnroll} className="px-2 py-2.5 text-sm font-semibold text-gray-500 hover:text-ink">
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {recoveryCodes && (
+        <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-100/60 p-4">
+          <p className="text-body font-semibold text-ink">Save your recovery codes</p>
+          <p className="mt-0.5 text-sm text-gray-600">
+            Each code works once. Keep them somewhere safe — if you lose your
+            authenticator, a code lets you sign in and turn 2FA back off. This is the
+            only time they&apos;re shown.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {recoveryCodes.map((c) => (
+              <span key={c} className="ws-mono text-sm text-ink">{c}</span>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigator.clipboard?.writeText(recoveryCodes.join("\n"))}
+              className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-ink transition hover:border-gray-300"
+            >
+              Copy
+            </button>
+            <button
+              type="button"
+              onClick={() => setRecoveryCodes(null)}
+              className="text-sm font-semibold text-gray-600 hover:text-ink"
+            >
+              I&apos;ve saved them
             </button>
           </div>
         </div>

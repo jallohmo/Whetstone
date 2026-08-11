@@ -7,7 +7,7 @@ import { PublicProfileForm } from "@/components/account/PublicProfileForm";
 import { SecuritySettings } from "@/components/account/SecuritySettings";
 import { PayoutSettings } from "@/components/account/PayoutSettings";
 import { NotificationSettings } from "@/components/account/NotificationSettings";
-import { DangerZone } from "@/components/account/DangerZone";
+import { AdvisorDangerZone } from "@/components/account/AdvisorDangerZone";
 import { getCurrentUser } from "@/lib/auth";
 import { getMfaStatus } from "@/lib/mfa";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +34,7 @@ export default async function AdvisorAccountPage() {
         avatarUrl: true,
         verificationStatus: true,
         weeklyPayouts: true,
+        deactivatedAt: true,
         stripeAccountId: true,
         specialtyTags: { select: { id: true } },
       },
@@ -63,6 +64,13 @@ export default async function AdvisorAccountPage() {
   return (
     <div>
       <PageHeader title="Account" subtitle="Your public advisor profile, security and payouts." />
+
+      {profile.deactivatedAt && (
+        <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
+          Your profile is deactivated — customers can&apos;t see or book you. Reactivate
+          it in the section below.
+        </div>
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
         {/* Left column */}
@@ -113,7 +121,7 @@ export default async function AdvisorAccountPage() {
           </AccountSection>
 
           <AccountSection id="danger" title="Leave the platform" tone="danger">
-            <DangerZone role="advisor" />
+            <AdvisorDangerZone deactivated={Boolean(profile.deactivatedAt)} />
           </AccountSection>
         </div>
       </div>
