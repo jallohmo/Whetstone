@@ -53,7 +53,7 @@ export async function listPaymentMethods(): Promise<{ cards: SavedCard[] }> {
 export async function createSetupIntent(): Promise<{ clientSecret?: string; error?: string }> {
   if (!stripeEnabled) return { error: "Payments aren't configured yet." };
   const user = await getCurrentUser();
-  if (!user || user.role !== "CUSTOMER") return { error: "Customers only." };
+  if (!user || user.role !== "CUSTOMER") return { error: "Clients only." };
 
   const profile = await customerProfileFor(user.id);
   if (!profile) return { error: "You can save a card after your first booking." };

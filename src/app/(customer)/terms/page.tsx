@@ -20,7 +20,7 @@ export default function TermsPage() {
         {
           heading: "Who we are, and what Whetstone is",
           body: [
-            "Whetstone is a platform that introduces business owners (“customers”) to independent experts (“advisors”) and facilitates bounded advisory sessions between them. We verify advisors, hold payments, and provide the tools to meet and message.",
+            "Whetstone is a platform that introduces business owners (“clients”) to independent experts (“advisors”) and facilitates bounded advisory sessions between them. We verify advisors, hold payments, and provide the tools to meet and message.",
             "Whetstone is not a party to the advice given. Advisors are independent — they are not our employees or agents, and we do not supervise or direct the substance of their advice.",
           ],
         },

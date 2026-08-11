@@ -219,7 +219,7 @@ export async function reactivateAdvisor(): Promise<AccountFormState> {
 export async function deleteAccount(): Promise<{ error?: string }> {
   const user = await getCurrentUser();
   if (!user) return { error: "Sign in first." };
-  if (user.role !== "CUSTOMER") return { error: "Only customer accounts can be deleted here." };
+  if (user.role !== "CUSTOMER") return { error: "Only client accounts can be deleted here." };
 
   const profile = await prisma.customerProfile.findUnique({
     where: { userId: user.id },

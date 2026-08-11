@@ -67,7 +67,7 @@ export default async function AdvisorAccountPage() {
 
       {profile.deactivatedAt && (
         <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
-          Your profile is deactivated — customers can&apos;t see or book you. Reactivate
+          Your profile is deactivated — clients can&apos;t see or book you. Reactivate
           it in the section below.
         </div>
       )}

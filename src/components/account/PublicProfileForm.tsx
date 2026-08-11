@@ -37,7 +37,7 @@ export function PublicProfileForm({
 
   return (
     <form action={action}>
-      <Field label="Headline" hint="The one line customers see first.">
+      <Field label="Headline" hint="The one line clients see first.">
         <Input name="headline" defaultValue={headline ?? ""} maxLength={160} placeholder="e.g. Retired CFO — 25 years on cash flow and lending." />
       </Field>
       <Field label="About">

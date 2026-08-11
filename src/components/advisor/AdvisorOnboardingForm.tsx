@@ -58,7 +58,7 @@ export function AdvisorOnboardingForm({
       {/* Step: background */}
       <Card>
         <h3 className="mb-4 text-h3 text-ink">Your background</h3>
-        <Field label="One-line summary" hint="What customers see first. e.g. 'Retired CFO — 25 years on cash flow and lending.'">
+        <Field label="One-line summary" hint="What clients see first. e.g. 'Retired CFO — 25 years on cash flow and lending.'">
           <Input name="headline" placeholder="A short, plain-language summary" maxLength={160} />
         </Field>
         <Field label="About you" hint="Where you've worked, what you're genuinely good at helping with.">

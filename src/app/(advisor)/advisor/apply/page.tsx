@@ -47,7 +47,7 @@ export default async function AdvisorApplyPage() {
       <div>
         <PageHeader
           title="Become a Whetstone advisor"
-          subtitle="You're signed in as a customer. Continue as an advisor to complete the short application — verification is what makes your profile trusted."
+          subtitle="You're signed in as a client. Continue as an advisor to complete the short application — verification is what makes your profile trusted."
         />
         <Card>
           <p className="mb-4 text-body text-gray-600">
@@ -89,7 +89,7 @@ export default async function AdvisorApplyPage() {
       </div>
       <PageHeader
         title={existing ? "Add the missing details" : "Complete your advisor profile"}
-        subtitle="Worth doing properly — this is what customers and our verification team see."
+        subtitle="Worth doing properly — this is what clients and our verification team see."
       />
       <AdvisorOnboardingForm
         userId={user.id}

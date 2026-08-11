@@ -37,14 +37,14 @@ export default async function AvailabilityPage() {
     <div>
       <PageHeader
         title="Your availability"
-        subtitle="Add the times you're open to sessions. Customers can only book slots you've added."
+        subtitle="Add the times you're open to sessions. Clients can only book slots you've added."
       />
 
       {profile.verificationStatus !== "VERIFIED" && (
         <div className="mb-page-gap flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
           <TriangleAlert size={18} className="mt-0.5 shrink-0" strokeWidth={2} />
           <p>
-            You can set availability now, but customers won&apos;t see you until your
+            You can set availability now, but clients won&apos;t see you until your
             profile is verified.
           </p>
         </div>
