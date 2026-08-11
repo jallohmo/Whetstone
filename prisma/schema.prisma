@@ -80,6 +80,9 @@ model AdvisorProfile {
   user                    User               @relation(fields: [userId], references: [id])
   bio                     String
   headline                String? // short RelevanceExplainer seed line
+  // Free-text escape hatch when the taxonomy's "Other" doesn't capture an
+  // advisor's industry/capability — reviewed by ops, who can extend the taxonomy.
+  otherSpecialties        String?            @map("other_specialties")
   yearsExperience         Int                @map("years_experience")
   verificationStatus      VerificationStatus @default(PENDING) @map("verification_status")
   identityCheckPassed     Boolean            @default(false) @map("identity_check_passed")

@@ -24,12 +24,14 @@ export async function submitAdvisorApplication(formData: FormData) {
   const bio = String(formData.get("bio") ?? "").trim();
   const yearsExperience = parseInt(String(formData.get("yearsExperience") ?? ""), 10);
   const specialtyIds = formData.getAll("specialtyIds").map((v) => String(v));
+  const otherSpecialties = String(formData.get("otherSpecialties") ?? "").trim();
 
   if (!bio || Number.isNaN(yearsExperience) || yearsExperience < 0) {
     throw new Error("Bio and a valid years-of-experience are required.");
   }
-  if (specialtyIds.length === 0) {
-    throw new Error("Pick at least one specialty so we can match you.");
+  // At least one selected capability OR a free-text "other" so no advisor is stuck.
+  if (specialtyIds.length === 0 && !otherSpecialties) {
+    throw new Error("Pick at least one area — or tell us what's missing under “Something not listed?”.");
   }
 
   const existing = await prisma.advisorProfile.findUnique({
@@ -46,6 +48,7 @@ export async function submitAdvisorApplication(formData: FormData) {
         headline: headline || null,
         bio,
         yearsExperience,
+        otherSpecialties: otherSpecialties || null,
         verificationStatus: "PENDING",
         specialtyTags: { set: specialtyIds.map((id) => ({ id })) },
       },
@@ -57,6 +60,7 @@ export async function submitAdvisorApplication(formData: FormData) {
         headline: headline || null,
         bio,
         yearsExperience,
+        otherSpecialties: otherSpecialties || null,
         verificationStatus: "PENDING",
         specialtyTags: { connect: specialtyIds.map((id) => ({ id })) },
       },

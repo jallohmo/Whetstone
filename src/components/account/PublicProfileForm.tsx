@@ -23,6 +23,7 @@ export function PublicProfileForm({
   yearsExperience,
   industries,
   selectedIds,
+  otherSpecialties,
   sessionRateLabel,
 }: {
   headline: string | null;
@@ -30,6 +31,7 @@ export function PublicProfileForm({
   yearsExperience: number;
   industries: TaxonomyGroup[];
   selectedIds: string[];
+  otherSpecialties: string | null;
   sessionRateLabel: string | null;
 }) {
   const [state, action] = useFormState<AccountFormState, FormData>(updateAdvisorProfile, {});
@@ -66,6 +68,10 @@ export function PublicProfileForm({
           ))}
         </div>
       </div>
+
+      <Field label="Something not listed?" hint="Any industry or capability the list above is missing — our team reviews these.">
+        <Textarea name="otherSpecialties" rows={2} defaultValue={otherSpecialties ?? ""} />
+      </Field>
 
       {sessionRateLabel && (
         <Field label="Session rate" hint="Set by Whetstone's standard package pricing.">

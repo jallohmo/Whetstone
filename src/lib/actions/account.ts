@@ -61,6 +61,7 @@ export async function updateAdvisorProfile(
   const yearsRaw = String(formData.get("yearsExperience") ?? "").trim();
   const years = yearsRaw ? parseInt(yearsRaw, 10) : NaN;
   const specialtyIds = formData.getAll("specialtyIds").map((v) => String(v));
+  const otherSpecialties = String(formData.get("otherSpecialties") ?? "").trim();
 
   if (!bio) return { error: "Add a short bio for your public profile." };
 
@@ -75,6 +76,7 @@ export async function updateAdvisorProfile(
     data: {
       headline: headline || null,
       bio,
+      otherSpecialties: otherSpecialties || null,
       ...(Number.isNaN(years) ? {} : { yearsExperience: years }),
       ...(specialtyIds.length ? { specialtyTags: { set: specialtyIds.map((id) => ({ id })) } } : {}),
     },

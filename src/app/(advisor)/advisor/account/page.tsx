@@ -31,6 +31,7 @@ export default async function AdvisorAccountPage() {
         headline: true,
         bio: true,
         yearsExperience: true,
+        otherSpecialties: true,
         avatarUrl: true,
         verificationStatus: true,
         weeklyPayouts: true,
@@ -100,6 +101,7 @@ export default async function AdvisorAccountPage() {
                 children: r.children.map((c) => ({ id: c.id, name: c.name })),
               }))}
               selectedIds={profile.specialtyTags.map((t) => t.id)}
+              otherSpecialties={profile.otherSpecialties}
               sessionRateLabel={sessionRateLabel}
             />
           </AccountSection>

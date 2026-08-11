@@ -91,6 +91,20 @@ export function AdvisorOnboardingForm({
             </fieldset>
           ))}
         </div>
+
+        <div className="mt-5 border-t border-dashed border-gray-300 pt-4">
+          <label className="mb-1.5 block text-sm font-semibold text-ink">
+            Something not listed?
+          </label>
+          <Textarea
+            name="otherSpecialties"
+            rows={2}
+            placeholder="Add any industry or capability we're missing — our team will review it."
+          />
+          <p className="mt-1.5 text-sm text-gray-500">
+            Optional. Use this if none of the areas above quite fit.
+          </p>
+        </div>
       </Card>
 
       {/* Step: credentials */}
