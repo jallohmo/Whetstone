@@ -41,20 +41,20 @@ Complete list of what the code actually reads (`process.env.*` + Prisma `env()`)
 > above, preferring the app's own names. **Do not** re-add a manual `DATABASE_URL`
 > unless it's correct — a stale manual one overrides the integration's working URL.
 
-## 2. Stripe webhook — domain must match production  ⛔ blocked on a production domain (§6)
+## 2. Stripe webhook — domain must match production
 
-A webhook endpoint was created in the **sandbox** account pointing at a
-placeholder domain:
+The **sandbox** webhook endpoint now points at the production domain:
 
 ```
-https://whetstone.vercel.app/api/stripe/webhook   (event: checkout.session.completed)
+https://whetstone.au/api/stripe/webhook   (event: checkout.session.completed)
 ```
 
-- ⚠️ **No production domain exists yet** (see §6). Until one is chosen, this URL
-  is wrong — `checkout.session.completed` silently never fires and bookings are
-  never fulfilled. Update the endpoint URL once the domain is live.
+- ⚠️ It only delivers once **`whetstone.au` is actually serving the app** (Vercel
+  domain assigned + DNS live). Until then, `checkout.session.completed` reaches a
+  domain that isn't up and bookings aren't fulfilled.
 - Put the endpoint's signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`
-  (current sandbox secret: `whsec_8aczUaz5TDuO9TN4TEvyGQaGUpnmiHpK`).
+  (current sandbox secret: `whsec_8aczUaz5TDuO9TN4TEvyGQaGUpnmiHpK`). Editing the
+  endpoint URL in place does **not** rotate the secret.
 - **Going live:** see §6 (Stripe go-live) — a *separate* live-mode webhook with
   its own secret. The sandbox endpoint only fires for test-mode payments.
 
@@ -63,8 +63,8 @@ https://whetstone.vercel.app/api/stripe/webhook   (event: checkout.session.compl
 Sign-up uses `emailRedirectTo: ${origin}/auth/callback`. In Supabase →
 **Authentication → URL Configuration**:
 
-- Set **Site URL** to the production domain.
-- Add `https://<your-domain>/auth/callback` to **Redirect URLs** (plus
+- Set **Site URL** to the production domain (`https://whetstone.au`).
+- Add `https://whetstone.au/auth/callback` to **Redirect URLs** (plus
   `https://*-<your-team>.vercel.app/auth/callback` for preview deploys).
 
 Miss this and email-confirmation links bounce to an error in production (works
@@ -92,19 +92,19 @@ other items depend on having a real production domain**, so this comes first.
 
 ### 6a. Production domain (do this first — unblocks §2 and §3)
 
-There is **no custom production domain yet** — the app runs on Vercel's
-auto-assigned `*.vercel.app` URLs (`whetstone-nu.vercel.app`,
-`whetstone-engage-x2.vercel.app`). To launch on a real domain:
+The production domain is **`whetstone.au`** (previously the auto-assigned
+`*.vercel.app` URLs, e.g. `whetstone-nu.vercel.app`). To make it live:
 
-1. Buy/choose a domain (or decide to launch on `*.vercel.app` for now).
-2. Vercel → project → **Settings → Domains** → add it; follow the DNS steps.
-3. Once live, it becomes the value used everywhere below.
-4. **Then action the domain-dependent items:**
-   - **§2** — update the Stripe webhook endpoint URL to `https://<domain>/api/stripe/webhook`.
-   - **§3** — set Supabase **Site URL** + add `https://<domain>/auth/callback` to Redirect URLs.
+1. Vercel → project → **Settings → Domains** → add `whetstone.au` and set it as
+   the Production domain; follow the DNS steps.
+2. Point `whetstone.au` at Vercel per those instructions; wait for it to verify.
+3. **Then confirm the domain-dependent items:**
+   - **§2** — the Stripe webhook already points at `https://whetstone.au/api/stripe/webhook`.
+   - **§3** — set Supabase **Site URL** to `https://whetstone.au` + add
+     `https://whetstone.au/auth/callback` to Redirect URLs.
 
-> Until a domain is chosen, §2 and §3 can't be finalised. Everything else
-> (test-mode checkout aside) works on the `*.vercel.app` URLs.
+> Until `whetstone.au` resolves to the app, §2 and §3 won't function. Previews
+> continue to work on their `*.vercel.app` URLs.
 
 ### 6b. Stripe go-live (production payments)
 

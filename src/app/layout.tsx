@@ -1,10 +1,27 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const title = "Whetstone — advice from people who've actually done it";
+const description =
+  "A verified, insured marketplace connecting business owners with semi-retired and retired professionals for bounded advisory sessions — in any industry, anywhere in the world.";
+
 export const metadata: Metadata = {
-  title: "Whetstone — advice from people who've actually done it",
-  description:
-    "A verified, insured marketplace connecting business owners with semi-retired and retired professionals for bounded advisory sessions — in any industry, anywhere in the world.",
+  // Absolute base for Open Graph / canonical URLs. Update if the domain changes.
+  metadataBase: new URL("https://whetstone.au"),
+  title,
+  description,
+  openGraph: {
+    type: "website",
+    siteName: "Whetstone",
+    url: "/",
+    title,
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({
