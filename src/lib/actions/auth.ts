@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import { roleHome } from "@/lib/auth";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { getCurrentUser, roleHome } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@prisma/client";
 
 export interface AuthFormState {
@@ -125,6 +127,46 @@ export async function updatePassword(
   if (error) return { error: error.message };
 
   redirect("/login?reset=1");
+}
+
+/**
+ * Post-OAuth role selection for advisors. Google (and any OAuth) sign-ups land as
+ * CUSTOMER because the redirect flow can't pass a role into the signup trigger.
+ * This lets such a user opt into the ADVISOR role from /advisor/apply.
+ *
+ * Role is written in BOTH places it lives: public.users.role (authoritative, via
+ * the service role since RLS blocks a self-update of role) and the JWT's
+ * user_metadata.role (what the route-gating middleware reads). Refused for OPS and
+ * for a customer account that already has bookings.
+ */
+export async function becomeAdvisor(): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Sign in first." };
+  if (user.role === "ADVISOR") return {};
+  if (user.role === "OPS_ADMIN") return { error: "Ops accounts can't become advisors." };
+
+  const profile = await prisma.customerProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  if (profile) {
+    const bookings = await prisma.booking.count({ where: { customerId: profile.id } });
+    if (bookings > 0) {
+      return { error: "This account has customer bookings — use a different email to advise." };
+    }
+  }
+
+  const admin = createServiceRoleClient();
+  await prisma.user.update({ where: { id: user.id }, data: { role: "ADVISOR" } });
+  // Keep the JWT role in sync (middleware gates /advisor/* on it), preserving any
+  // provider-populated metadata (name, avatar_url, …).
+  const { data: existing } = await admin.auth.admin.getUserById(user.id);
+  await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: { ...(existing?.user?.user_metadata ?? {}), role: "ADVISOR" },
+  });
+
+  revalidatePath("/advisor/apply");
+  return {};
 }
 
 /** Sign out and return to the landing page. */
