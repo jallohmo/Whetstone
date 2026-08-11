@@ -26,13 +26,15 @@ Complete list of what the code actually reads (`process.env.*` + Prisma `env()`)
 |---|---|
 | `STRIPE_SECRET_KEY` | Payments (without it: held-payment fallback, no card) |
 | `STRIPE_WEBHOOK_SECRET` | Booking fulfilment via webhook (the `whsec_…` from the endpoint) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ⚠️ build-time inlined. Saved cards (Stripe.js Elements on the account page) |
 | `DAILY_API_KEY` | Video calls (Daily.co) |
 | `NEXT_PUBLIC_DEFAULT_CURRENCY` | Fallback currency (code default: AUD) |
 | `PLATFORM_COMMISSION_BPS` | Commission (code default: 1500 = 15%) |
 | `INSURANCE_COVERAGE_ACTIVE`, `INSURANCE_COVERAGE_STATEMENT` | Insurance statement config |
 
-> `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `KYC_PROVIDER` appear in `.env.example`
-> but are **not read anywhere in the code** — reserved for later, safe to skip.
+> `KYC_PROVIDER` appears in `.env.example` but is **not read anywhere in the code**
+> yet — reserved for later, safe to skip. (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is
+> now read by the saved-cards flow — see the optional table above.)
 
 > **Supabase↔Vercel integration:** the DB URL and Supabase keys are currently
 > provided by the official integration under *different names*
@@ -113,12 +115,19 @@ To take real payments:
 
 1. Activate the Stripe account (business details, bank for payouts).
 2. Enable **Stripe Connect** (Express) for advisor payouts.
-3. Set **live-mode** keys in Vercel: `STRIPE_SECRET_KEY` (live) and wire
-   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (live) — note this var is in `.env.example`
-   but not yet read by the code, so wiring it is a small code change.
-4. Create a **live-mode** webhook at `https://<domain>/api/stripe/webhook`
-   (event `checkout.session.completed`) and put its **live** signing secret in
-   `STRIPE_WEBHOOK_SECRET`.
+3. Set **live-mode** keys in Vercel: `STRIPE_SECRET_KEY` (live) and
+   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (live) — the latter is read by the
+   saved-cards flow and is build-time inlined, so redeploy after setting it.
+4. **Create the live-mode Stripe webhook** — this is separate from the sandbox
+   endpoint and has its **own** signing secret:
+   - In the Stripe Dashboard, switch to **live mode** → **Developers → Webhooks →
+     Add endpoint**.
+   - URL: `https://whetstone.au/api/stripe/webhook`
+   - Event: `checkout.session.completed`
+   - Copy the endpoint's **live** signing secret into Vercel as
+     `STRIPE_WEBHOOK_SECRET` (Production scope), then redeploy.
+   - ⚠️ The sandbox endpoint (§2) only fires for test-mode payments; live
+     payments won't be fulfilled until this live endpoint exists.
 5. Confirm the Stripe account settles in **AUD** (matches the platform currency).
 
 ## 7. Verify with /api/health
