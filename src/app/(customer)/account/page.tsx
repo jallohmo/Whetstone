@@ -64,7 +64,7 @@ export default async function CustomerAccountPage() {
             userId={user.id}
             name={displayName}
             email={row.email}
-            meta={`Customer since ${row.createdAt.getFullYear()}`}
+            meta={`Client since ${row.createdAt.getFullYear()}`}
             avatarUrl={row.avatarUrl}
           />
           <SectionNav items={CUSTOMER_SECTIONS} />
