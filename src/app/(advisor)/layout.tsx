@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LogOut } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, displayName } from "@/lib/auth";
 import { AdvisorNav } from "@/components/advisor/AdvisorNav";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Wordmark } from "@/components/ui/Wordmark";
@@ -22,7 +22,7 @@ export default async function AdvisorLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  const handle = user?.email?.split("@")[0] ?? "advisor";
+  const name = user ? displayName(user) : "advisor";
   const profile = user
     ? await prisma.advisorProfile.findUnique({
         where: { userId: user.id },
@@ -33,17 +33,20 @@ export default async function AdvisorLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="hidden w-[264px] shrink-0 flex-col border-r border-gray-150 bg-white p-5 md:flex">
-        <Link href="/" aria-label="Whetstone home" className="mb-5 block transition hover:opacity-90">
+        <Link href="/" aria-label="Whetstone home" className="mb-1.5 block transition hover:opacity-90">
           <Wordmark size="sm" />
         </Link>
+        <p className="mb-5 text-2xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+          Advisor
+        </p>
 
         {user ? (
           <>
             {/* Identity block — photo, name, email. */}
             <div className="mb-5 flex items-center gap-3 border-b border-gray-150 pb-5">
-              <Avatar name={handle} src={profile?.avatarUrl ?? user.avatarUrl} gradient="brand" size={40} />
+              <Avatar name={name} src={profile?.avatarUrl ?? user.avatarUrl} gradient="brand" size={40} />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink">{handle}</p>
+                <p className="truncate text-sm font-semibold text-ink">{name}</p>
                 <p className="truncate text-xs text-gray-500">{user.email}</p>
               </div>
             </div>

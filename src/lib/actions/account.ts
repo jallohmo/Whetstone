@@ -56,6 +56,8 @@ export async function updateAdvisorProfile(
   const user = await getCurrentUser();
   if (!user || user.role !== "ADVISOR") return { error: "Advisors only." };
 
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
   const headline = String(formData.get("headline") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const yearsRaw = String(formData.get("yearsExperience") ?? "").trim();
@@ -71,6 +73,17 @@ export async function updateAdvisorProfile(
   });
   if (!profile) return { error: "Complete your application first." };
 
+  // Name lives on User (shared with the nav/account chrome). Keep the legacy
+  // single fullName in sync so anything still reading it stays correct.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      firstName: firstName || null,
+      lastName: lastName || null,
+      fullName: [firstName, lastName].filter(Boolean).join(" ") || null,
+    },
+  });
+
   await prisma.advisorProfile.update({
     where: { id: profile.id },
     data: {
@@ -82,7 +95,7 @@ export async function updateAdvisorProfile(
     },
   });
 
-  revalidatePath("/advisor/account");
+  revalidatePath("/advisor", "layout");
   revalidatePath(`/advisors/${profile.id}`);
   return { ok: true };
 }

@@ -18,6 +18,8 @@ interface TaxonomyGroup {
  * rate is read-only (packages are platform-level, not per-advisor at MVP).
  */
 export function PublicProfileForm({
+  firstName,
+  lastName,
   headline,
   bio,
   yearsExperience,
@@ -26,6 +28,8 @@ export function PublicProfileForm({
   otherSpecialties,
   sessionRateLabel,
 }: {
+  firstName: string | null;
+  lastName: string | null;
   headline: string | null;
   bio: string;
   yearsExperience: number;
@@ -39,6 +43,14 @@ export function PublicProfileForm({
 
   return (
     <form action={action}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="First name">
+          <Input name="firstName" defaultValue={firstName ?? ""} placeholder="Your first name" />
+        </Field>
+        <Field label="Last name">
+          <Input name="lastName" defaultValue={lastName ?? ""} placeholder="Your last name" />
+        </Field>
+      </div>
       <Field label="Headline" hint="The one line clients see first.">
         <Input name="headline" defaultValue={headline ?? ""} maxLength={160} placeholder="e.g. Retired CFO — 25 years on cash flow and lending." />
       </Field>

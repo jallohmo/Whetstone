@@ -8,7 +8,7 @@ import { SecuritySettings } from "@/components/account/SecuritySettings";
 import { PayoutSettings } from "@/components/account/PayoutSettings";
 import { NotificationSettings } from "@/components/account/NotificationSettings";
 import { AdvisorDangerZone } from "@/components/account/AdvisorDangerZone";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, displayName } from "@/lib/auth";
 import { getMfaStatus } from "@/lib/mfa";
 import { prisma } from "@/lib/prisma";
 import { keysForRole, resolvePrefs } from "@/lib/notifications";
@@ -42,7 +42,13 @@ export default async function AdvisorAccountPage() {
     }),
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { email: true, notificationPrefs: true },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        fullName: true,
+        notificationPrefs: true,
+      },
     }),
     prisma.industryTaxonomy.findMany({
       where: { parentId: null },
@@ -54,7 +60,7 @@ export default async function AdvisorAccountPage() {
 
   if (!profile) redirect("/advisor/apply");
 
-  const handle = row?.email?.split("@")[0] ?? "advisor";
+  const name = row ? displayName(row) : "advisor";
   const verified = profile.verificationStatus === "VERIFIED";
   const prefs = resolvePrefs("ADVISOR", row?.notificationPrefs);
   const mfa = await getMfaStatus();
@@ -78,7 +84,7 @@ export default async function AdvisorAccountPage() {
         <div className="flex flex-col gap-4 lg:sticky lg:top-8">
           <ProfileCard
             userId={user.id}
-            name={handle}
+            name={name}
             email={row?.email ?? ""}
             meta={profile.headline ?? `${profile.yearsExperience} years' experience`}
             avatarUrl={profile.avatarUrl}
@@ -92,6 +98,8 @@ export default async function AdvisorAccountPage() {
         <div className="flex flex-col gap-4">
           <AccountSection id="profile" title="Public profile">
             <PublicProfileForm
+              firstName={row?.firstName ?? null}
+              lastName={row?.lastName ?? null}
               headline={profile.headline}
               bio={profile.bio}
               yearsExperience={profile.yearsExperience}

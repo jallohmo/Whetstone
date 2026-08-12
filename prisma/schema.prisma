@@ -42,6 +42,8 @@ model User {
   // so they work for a customer who hasn't created a CustomerProfile yet.
   // users is owner+OPS-only under RLS, so they are never publicly exposed.
   fullName        String?          @map("full_name")
+  firstName       String?          @map("first_name")
+  lastName        String?          @map("last_name")
   phone           String?          @map("phone")
   avatarUrl       String?          @map("avatar_url")
   // Per-key notification toggles (role-agnostic map, e.g. {"newMessages": true}).
