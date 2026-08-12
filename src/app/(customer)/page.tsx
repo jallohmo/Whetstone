@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, BadgeCheck, Play, ShieldCheck, Target } from "lucide-react";
 import { Eyebrow } from "@/components/ui";
 import { Avatar, AvatarGroup } from "@/components/ui/Avatar";
 import { Money } from "@/components/shared/Money";
 import { getLandingData } from "@/lib/featured";
+import { getCurrentUser } from "@/lib/auth";
 
 // Screen 1 — Landing/homepage.
 // Plain-spoken, "describe your problem" entry point. Weathered and credible,
@@ -13,6 +15,11 @@ import { getLandingData } from "@/lib/featured";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
+  // Signed-in clients get their dashboard, not the marketing pitch. Advisors and
+  // ops keep access to the public landing (their own shells live elsewhere).
+  const user = await getCurrentUser();
+  if (user?.role === "CUSTOMER") redirect("/home");
+
   const { featured, ring, matchedCount } = await getLandingData();
 
   return (

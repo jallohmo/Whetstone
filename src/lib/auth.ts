@@ -71,14 +71,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   }
 });
 
-/** Home route for a role after login. */
+/** Home route for a role after login — the signed-in dashboard for each role. */
 export function roleHome(role: UserRole): string {
   switch (role) {
     case "OPS_ADMIN":
       return "/ops";
     case "ADVISOR":
-      return "/advisor/verification-status";
+      return "/advisor";
     default:
-      return "/";
+      return "/home";
   }
 }

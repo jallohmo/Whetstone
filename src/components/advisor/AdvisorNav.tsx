@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, Inbox, LifeBuoy, Settings, ShieldCheck, UserCheck, Wallet } from "lucide-react";
+import { CalendarClock, Inbox, LayoutDashboard, LifeBuoy, Settings, ShieldCheck, UserCheck, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -21,6 +21,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { href: "/advisor", label: "Home", icon: LayoutDashboard },
   { href: "/advisor/account", label: "Account Settings", icon: Settings },
   { href: "/advisor/apply", label: "Application", icon: UserCheck },
   { href: "/advisor/verification-status", label: "Verification", icon: ShieldCheck },
@@ -36,7 +37,10 @@ export function AdvisorNav() {
   return (
     <nav className="flex flex-col gap-1">
       {NAV.map(({ href, label, icon: Icon, external }) => {
-        const active = !external && (pathname === href || pathname.startsWith(href + "/"));
+        // "/advisor" (Home) matches only exactly — it's a prefix of every other
+        // route, so it must not light up on the sub-pages.
+        const active =
+          !external && (pathname === href || (href !== "/advisor" && pathname.startsWith(href + "/")));
         const className = cn(
           "flex items-center gap-3 rounded-md px-3 py-2.5 text-body font-medium transition duration-DEFAULT ease-soft",
           active ? "bg-ink text-white shadow-ink-glow" : "text-gray-700 hover:bg-gray-100",

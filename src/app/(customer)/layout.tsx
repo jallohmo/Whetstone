@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, displayName } from "@/lib/auth";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { ProfileMenu } from "@/components/shared/ProfileMenu";
+import { CustomerNav } from "@/components/customer/CustomerNav";
 
 /**
  * Customer shell (Screens 1-9). Canvas gray100, centered white "pill" top bar,
@@ -24,14 +25,19 @@ export default async function CustomerLayout({
     <div className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-shell px-4 pt-5">
         <header className="mx-auto flex max-w-shell items-center justify-between rounded-pill bg-white py-3 pl-[22px] pr-[14px] shadow-card">
-          <Link href="/" aria-label="Whetstone home" className="transition hover:opacity-90">
+          <Link
+            href={user ? "/home" : "/"}
+            aria-label="Whetstone home"
+            className="transition hover:opacity-90"
+          >
             <Wordmark />
           </Link>
+          {user && <CustomerNav />}
           <nav className="flex items-center gap-1 text-sm">
             {user ? (
               <ProfileMenu
                 role="customer"
-                displayName={user.fullName ?? user.email.split("@")[0]}
+                displayName={displayName(user)}
                 email={user.email}
                 avatarUrl={user.avatarUrl}
               />
