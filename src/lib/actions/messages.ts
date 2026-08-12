@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { notifyNewMessage } from "@/lib/email/notify";
 
 /**
  * Returns the booking with the two parties' user ids, but only if the given user
@@ -47,6 +48,8 @@ export async function sendMessage(formData: FormData) {
   await prisma.message.create({
     data: { bookingId, senderId: user.id, body },
   });
+
+  await notifyNewMessage(bookingId, user.id, body);
 
   revalidatePath(`/bookings/${bookingId}/messages`);
 }

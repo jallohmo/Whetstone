@@ -87,6 +87,35 @@ these before the first real build.
   relax the domain's default room privacy or extend `ensureVideoRoom()` in
   `src/lib/actions/video.ts` to call `POST /v1/meeting-tokens`.
 
+## 5b. Email — Resend (transactional) + Supabase Auth SMTP
+
+The app sends transactional email through **Resend**. Without `RESEND_API_KEY`
+every send is a logged no-op, so nothing breaks — but no one gets a receipt,
+booking, message, or payout email. To enable:
+
+1. **Verify a sending domain** in Resend — use a dedicated subdomain
+   (`mail.whetstone.au`), *not* the root, so sending reputation is isolated. Add
+   the **SPF, DKIM and DMARC** DNS records Resend gives you.
+2. Set in Vercel: `RESEND_API_KEY`, `EMAIL_FROM`
+   (`Whetstone <no-reply@mail.whetstone.au>`), optionally `EMAIL_REPLY_TO`, and
+   `NEXT_PUBLIC_SITE_URL` (used to build links in emails sent from the Stripe
+   webhook, outside a normal request).
+3. **Point Supabase Auth at Resend too.** Supabase's built-in email is
+   rate-limited and not for production. In Supabase → **Authentication → Emails →
+   SMTP Settings**, enter Resend's SMTP credentials so confirmation / reset /
+   magic-link mail leaves from the same verified domain.
+
+What's wired today (all gated by each recipient's notification preferences from
+the account page, except the client receipt which always sends):
+
+- **Booking confirmed** → client receipt + advisor "new booking".
+- **New message** → the other party in the thread.
+- **Payout released** → advisor.
+
+Not yet wired: **session reminders** (they're time-based, so they need a
+scheduler — Supabase `pg_cron`/edge function or a Vercel Cron calling the same
+`lib/email` helpers). The `sessionReminders` preference already exists for it.
+
 ## 6. Pre-launch activities — production domain & Stripe go-live
 
 These are the outstanding launch activities. They are grouped because **several
