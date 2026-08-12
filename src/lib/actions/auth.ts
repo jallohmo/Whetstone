@@ -152,7 +152,7 @@ export async function becomeAdvisor(): Promise<{ error?: string }> {
   if (profile) {
     const bookings = await prisma.booking.count({ where: { customerId: profile.id } });
     if (bookings > 0) {
-      return { error: "This account has customer bookings — use a different email to advise." };
+      return { error: "This account has client bookings — use a different email to advise." };
     }
   }
 

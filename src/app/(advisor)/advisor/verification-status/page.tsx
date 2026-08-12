@@ -15,7 +15,7 @@ const COPY: Record<string, string> = {
   PENDING:
     "We're reviewing your application. This usually takes a few days — we'll email you the moment there's news. You don't need to do anything right now.",
   VERIFIED:
-    "You're verified. Your profile is live and you can start taking bookings. Set your availability so customers can book you.",
+    "You're verified. Your profile is live and you can start taking bookings. Set your availability so clients can book you.",
   NEEDS_MORE_INFO:
     "We need a little more from you before we can verify you. Add the missing details and resubmit.",
   REJECTED:

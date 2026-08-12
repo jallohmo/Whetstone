@@ -93,7 +93,7 @@ by hand (above) is the simplest and is what this repo expects.
 The app uses **Supabase Auth (email + password)**. Configure the project once:
 
 1. **Authentication → URL Configuration**
-   - **Site URL:** your production URL (e.g. `https://whetstone.vercel.app`).
+   - **Site URL:** your production URL (`https://app.whetstone.au`).
    - **Redirect URLs:** add `https://<your-domain>/auth/callback` **and**
      `https://*-<your-team>.vercel.app/auth/callback` for preview deploys, plus
      `http://localhost:3000/auth/callback` for local dev. The email-confirmation
@@ -167,6 +167,6 @@ currency and Stripe is called in that currency.
 - **Migrations:** applied to Supabase already. When you change the schema later,
   run `prisma migrate` against `DIRECT_URL` and apply any new `supabase/migrations/*.sql`
   (RLS/policies) via the Supabase CLI — Vercel does not run migrations on deploy.
-- **Auth callback:** when you wire Supabase Auth, add your Vercel production URL and
+- **Auth callback:** add the production URL (`https://app.whetstone.au`) and
   `*.vercel.app` preview URLs to Supabase → Authentication → URL Configuration
   (redirect allow-list).

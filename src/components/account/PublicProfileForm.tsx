@@ -18,18 +18,24 @@ interface TaxonomyGroup {
  * rate is read-only (packages are platform-level, not per-advisor at MVP).
  */
 export function PublicProfileForm({
+  firstName,
+  lastName,
   headline,
   bio,
   yearsExperience,
   industries,
   selectedIds,
+  otherSpecialties,
   sessionRateLabel,
 }: {
+  firstName: string | null;
+  lastName: string | null;
   headline: string | null;
   bio: string;
   yearsExperience: number;
   industries: TaxonomyGroup[];
   selectedIds: string[];
+  otherSpecialties: string | null;
   sessionRateLabel: string | null;
 }) {
   const [state, action] = useFormState<AccountFormState, FormData>(updateAdvisorProfile, {});
@@ -37,7 +43,15 @@ export function PublicProfileForm({
 
   return (
     <form action={action}>
-      <Field label="Headline" hint="The one line customers see first.">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="First name">
+          <Input name="firstName" defaultValue={firstName ?? ""} placeholder="Your first name" />
+        </Field>
+        <Field label="Last name">
+          <Input name="lastName" defaultValue={lastName ?? ""} placeholder="Your last name" />
+        </Field>
+      </div>
+      <Field label="Headline" hint="The one line clients see first.">
         <Input name="headline" defaultValue={headline ?? ""} maxLength={160} placeholder="e.g. Retired CFO — 25 years on cash flow and lending." />
       </Field>
       <Field label="About">
@@ -66,6 +80,10 @@ export function PublicProfileForm({
           ))}
         </div>
       </div>
+
+      <Field label="Something not listed?" hint="Any industry or capability the list above is missing — our team reviews these.">
+        <Textarea name="otherSpecialties" rows={2} defaultValue={otherSpecialties ?? ""} />
+      </Field>
 
       {sessionRateLabel && (
         <Field label="Session rate" hint="Set by Whetstone's standard package pricing.">

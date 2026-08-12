@@ -56,11 +56,14 @@ export async function updateAdvisorProfile(
   const user = await getCurrentUser();
   if (!user || user.role !== "ADVISOR") return { error: "Advisors only." };
 
+  const firstName = String(formData.get("firstName") ?? "").trim();
+  const lastName = String(formData.get("lastName") ?? "").trim();
   const headline = String(formData.get("headline") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const yearsRaw = String(formData.get("yearsExperience") ?? "").trim();
   const years = yearsRaw ? parseInt(yearsRaw, 10) : NaN;
   const specialtyIds = formData.getAll("specialtyIds").map((v) => String(v));
+  const otherSpecialties = String(formData.get("otherSpecialties") ?? "").trim();
 
   if (!bio) return { error: "Add a short bio for your public profile." };
 
@@ -70,17 +73,29 @@ export async function updateAdvisorProfile(
   });
   if (!profile) return { error: "Complete your application first." };
 
+  // Name lives on User (shared with the nav/account chrome). Keep the legacy
+  // single fullName in sync so anything still reading it stays correct.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      firstName: firstName || null,
+      lastName: lastName || null,
+      fullName: [firstName, lastName].filter(Boolean).join(" ") || null,
+    },
+  });
+
   await prisma.advisorProfile.update({
     where: { id: profile.id },
     data: {
       headline: headline || null,
       bio,
+      otherSpecialties: otherSpecialties || null,
       ...(Number.isNaN(years) ? {} : { yearsExperience: years }),
       ...(specialtyIds.length ? { specialtyTags: { set: specialtyIds.map((id) => ({ id })) } } : {}),
     },
   });
 
-  revalidatePath("/advisor/account");
+  revalidatePath("/advisor", "layout");
   revalidatePath(`/advisors/${profile.id}`);
   return { ok: true };
 }
@@ -219,7 +234,7 @@ export async function reactivateAdvisor(): Promise<AccountFormState> {
 export async function deleteAccount(): Promise<{ error?: string }> {
   const user = await getCurrentUser();
   if (!user) return { error: "Sign in first." };
-  if (user.role !== "CUSTOMER") return { error: "Only customer accounts can be deleted here." };
+  if (user.role !== "CUSTOMER") return { error: "Only client accounts can be deleted here." };
 
   const profile = await prisma.customerProfile.findUnique({
     where: { userId: user.id },

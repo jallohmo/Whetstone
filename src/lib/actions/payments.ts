@@ -8,6 +8,7 @@ import { getStripe, stripeEnabled } from "@/lib/stripe";
 import { splitCommission } from "@/lib/currency";
 import { platformConfig } from "@/lib/platform-config";
 import { getCurrentUser } from "@/lib/auth";
+import { notifyBookingConfirmed, notifyPayoutReleased } from "@/lib/email/notify";
 
 function origin(): string {
   const h = headers();
@@ -56,6 +57,7 @@ export async function createCheckout(formData: FormData) {
         data: { insuranceCoverageConfirmed: true, status: "confirmed" },
       }),
     ]);
+    await notifyBookingConfirmed(bookingId);
     redirect(`/bookings/${bookingId}/confirmed`);
   }
 
@@ -112,6 +114,8 @@ export async function fulfillCheckout(bookingId: string, paymentIntentId: string
       data: { insuranceCoverageConfirmed: true, status: "confirmed" },
     }),
   ]);
+
+  await notifyBookingConfirmed(bookingId);
 }
 
 /**
@@ -147,6 +151,8 @@ export async function releasePaymentForBooking(bookingId: string) {
     where: { bookingId },
     data: { status: "released", stripeTransferId: transferId },
   });
+
+  await notifyPayoutReleased(bookingId);
 }
 
 /**

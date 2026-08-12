@@ -15,7 +15,7 @@ export function AdvisorDangerZone({ deactivated }: { deactivated: boolean }) {
   const [pending, startTransition] = useTransition();
 
   function onDeactivate() {
-    if (!window.confirm("Deactivate your advisor profile? Customers won't see or be able to book you until you reactivate.")) return;
+    if (!window.confirm("Deactivate your advisor profile? Clients won't see or be able to book you until you reactivate.")) return;
     setError(null);
     startTransition(async () => {
       const res = await deactivateAdvisor();

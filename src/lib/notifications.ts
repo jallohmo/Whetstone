@@ -19,8 +19,8 @@ export const NOTIFICATION_KEYS: Record<"CUSTOMER" | "ADVISOR", NotificationKey[]
     { key: "productUpdates", label: "Product updates", description: "Occasional news about Whetstone.", default: false },
   ],
   ADVISOR: [
-    { key: "newBookings", label: "New bookings", description: "When a customer books one of your slots.", default: true },
-    { key: "newMessages", label: "New messages", description: "When a customer replies in a thread.", default: true },
+    { key: "newBookings", label: "New bookings", description: "When a client books one of your slots.", default: true },
+    { key: "newMessages", label: "New messages", description: "When a client replies in a thread.", default: true },
     { key: "payoutConfirmations", label: "Payout confirmations", description: "When held earnings are released to you.", default: true },
   ],
 };

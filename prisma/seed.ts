@@ -17,22 +17,31 @@ const slugify = (s: string) =>
   s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 // Industry -> sub-specialties. Broad, all-industry launch taxonomy.
+//
+// Every industry ends with "Other (not listed)" so an advisor can always self-
+// allocate, and a final "Other / Cross-industry" industry catches anything the
+// list doesn't name. The free-text `otherSpecialties` field on the application
+// captures the detail when "Other" is picked. `OTHER` is appended to each list
+// below so the wording stays consistent in one place.
+const OTHER = "Other (not listed)";
+
 const TAXONOMY: Record<string, string[]> = {
-  "Manufacturing & Production": ["Operations & throughput", "Quality & compliance", "Supply chain & procurement", "Health & safety"],
-  "Construction & Trades": ["Estimating & tendering", "Project management", "Regulatory & certification", "Subcontractor management"],
-  "Retail & E-commerce": ["Merchandising & buying", "Inventory & fulfilment", "Pricing & margin", "Storefront & online conversion"],
-  "Hospitality & Food Service": ["Kitchen & menu operations", "Front-of-house & service", "Licensing & food safety", "Multi-site expansion"],
-  "Professional Services": ["Practice management", "Pricing & packaging", "Client acquisition", "Team & delivery"],
-  "Healthcare & Care": ["Clinical operations", "Regulatory & accreditation", "Staffing & rostering", "Patient/resident experience"],
-  "Technology & Software": ["Product & roadmap", "Engineering delivery", "Go-to-market", "Scaling & hiring"],
-  "Finance & Accounting": ["Cash flow & working capital", "Financial controls", "Tax & compliance", "Fundraising & lending"],
-  "Agriculture & Primary": ["Farm operations", "Compliance & certification", "Supply agreements", "Succession & transition"],
-  "Transport & Logistics": ["Fleet & operations", "Route & cost optimisation", "Compliance & licensing", "Warehousing"],
-  "Energy & Utilities": ["Operations & maintenance", "Regulatory & safety", "Sustainability & transition", "Asset management"],
-  "Creative & Media": ["Studio operations", "Commercial & rights", "Client & project delivery", "Talent & team"],
-  "Education & Training": ["Programme design", "Accreditation & compliance", "Enrolment & growth", "Operations"],
-  "Real Estate & Property": ["Development & feasibility", "Property management", "Compliance & leasing", "Investment strategy"],
-  "Nonprofit & Social Enterprise": ["Funding & grants", "Governance & compliance", "Programme delivery", "Impact measurement"],
+  "Manufacturing & Production": ["Operations & throughput", "Quality & compliance", "Supply chain & procurement", "Health & safety", "Automation & lean", "Cost reduction", "Product development", "Maintenance & reliability"],
+  "Construction & Trades": ["Estimating & tendering", "Project management", "Regulatory & certification", "Subcontractor management", "Contracts & disputes", "WHS & site safety", "Cash flow & retention", "Sustainability & green building"],
+  "Retail & E-commerce": ["Merchandising & buying", "Inventory & fulfilment", "Pricing & margin", "Storefront & online conversion", "Marketing & customer acquisition", "Marketplaces & omnichannel", "Loyalty & retention", "International expansion"],
+  "Hospitality & Food Service": ["Kitchen & menu operations", "Front-of-house & service", "Licensing & food safety", "Multi-site expansion", "Cost & margin control", "Staffing & culture", "Marketing & bookings", "Franchising"],
+  "Professional Services": ["Practice management", "Pricing & packaging", "Client acquisition", "Team & delivery", "Operations & systems", "Partnerships & M&A", "Marketing & brand", "Succession & exit"],
+  "Healthcare & Care": ["Clinical operations", "Regulatory & accreditation", "Staffing & rostering", "Patient/resident experience", "Funding & billing", "Quality & clinical risk", "Growth & new services", "Digital health & records"],
+  "Technology & Software": ["Product & roadmap", "Engineering delivery", "Go-to-market", "Scaling & hiring", "Fundraising & finance", "Security & compliance", "Customer success & retention", "Data & AI"],
+  "Finance & Accounting": ["Cash flow & working capital", "Financial controls", "Tax & compliance", "Fundraising & lending", "Systems & automation", "Reporting & forecasting", "M&A & exit", "Payroll & bookkeeping"],
+  "Agriculture & Primary": ["Farm operations", "Compliance & certification", "Supply agreements", "Succession & transition", "Sustainability & environment", "Diversification & value-add", "Labour & workforce", "Water & land management"],
+  "Transport & Logistics": ["Fleet & operations", "Route & cost optimisation", "Compliance & licensing", "Warehousing", "Technology & tracking", "Safety & fatigue management", "Customer & contracts", "Last-mile & delivery"],
+  "Energy & Utilities": ["Operations & maintenance", "Regulatory & safety", "Sustainability & transition", "Asset management", "Project delivery", "Commercial & pricing", "Grid & network", "Renewables & storage"],
+  "Creative & Media": ["Studio operations", "Commercial & rights", "Client & project delivery", "Talent & team", "Marketing & audience", "Finance & pricing", "IP & licensing", "Digital & content strategy"],
+  "Education & Training": ["Programme design", "Accreditation & compliance", "Enrolment & growth", "Operations", "Curriculum & delivery", "Digital & online learning", "Funding & partnerships", "Student experience"],
+  "Real Estate & Property": ["Development & feasibility", "Property management", "Compliance & leasing", "Investment strategy", "Financing & capital", "Sales & marketing", "Sustainability & ESG", "Facilities & operations"],
+  "Nonprofit & Social Enterprise": ["Funding & grants", "Governance & compliance", "Programme delivery", "Impact measurement", "Fundraising & development", "Volunteer & workforce", "Strategy & scaling", "Partnerships & advocacy"],
+  "Other / Cross-industry": ["Strategy & leadership", "Finance & funding", "Sales & marketing", "People & culture", "Operations & systems", "Legal & compliance", "Digital & technology", "Turnaround & exit"],
 };
 
 const PACKAGES = [
@@ -48,7 +57,9 @@ async function main() {
       create: { name: industry, slug: slugify(industry) },
     });
 
-    for (const specialty of specialties) {
+    // "Other (not listed)" is appended to every industry so an advisor is never
+    // stuck without a selectable capability.
+    for (const specialty of [...specialties, OTHER]) {
       const slug = `${parent.slug}--${slugify(specialty)}`;
       await prisma.industryTaxonomy.upsert({
         where: { slug },

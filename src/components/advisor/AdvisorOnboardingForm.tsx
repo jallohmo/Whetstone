@@ -58,7 +58,7 @@ export function AdvisorOnboardingForm({
       {/* Step: background */}
       <Card>
         <h3 className="mb-4 text-h3 text-ink">Your background</h3>
-        <Field label="One-line summary" hint="What customers see first. e.g. 'Retired CFO — 25 years on cash flow and lending.'">
+        <Field label="One-line summary" hint="What clients see first. e.g. 'Retired CFO — 25 years on cash flow and lending.'">
           <Input name="headline" placeholder="A short, plain-language summary" maxLength={160} />
         </Field>
         <Field label="About you" hint="Where you've worked, what you're genuinely good at helping with.">
@@ -90,6 +90,20 @@ export function AdvisorOnboardingForm({
               </div>
             </fieldset>
           ))}
+        </div>
+
+        <div className="mt-5 border-t border-dashed border-gray-300 pt-4">
+          <label className="mb-1.5 block text-sm font-semibold text-ink">
+            Something not listed?
+          </label>
+          <Textarea
+            name="otherSpecialties"
+            rows={2}
+            placeholder="Add any industry or capability we're missing — our team will review it."
+          />
+          <p className="mt-1.5 text-sm text-gray-500">
+            Optional. Use this if none of the areas above quite fit.
+          </p>
         </div>
       </Card>
 

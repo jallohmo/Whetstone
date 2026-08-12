@@ -9,7 +9,24 @@ export interface CurrentUser {
   email: string;
   role: UserRole;
   fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   avatarUrl: string | null;
+}
+
+/**
+ * The name to show for a user. Prefers the first/last name they've set, then a
+ * legacy single full name, and finally the local part of their email so there's
+ * always something human-ish to render.
+ */
+export function displayName(u: {
+  firstName?: string | null;
+  lastName?: string | null;
+  fullName?: string | null;
+  email: string;
+}): string {
+  const composed = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return composed || u.fullName?.trim() || u.email.split("@")[0];
 }
 
 /**
@@ -35,7 +52,15 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     // Authoritative role/identity from our mirror table.
     const row = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { id: true, email: true, role: true, fullName: true, avatarUrl: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        fullName: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+      },
     });
     return row ?? null;
   } catch (err) {
@@ -46,14 +71,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   }
 });
 
-/** Home route for a role after login. */
+/** Home route for a role after login — the signed-in dashboard for each role. */
 export function roleHome(role: UserRole): string {
   switch (role) {
     case "OPS_ADMIN":
       return "/ops";
     case "ADVISOR":
-      return "/advisor/verification-status";
+      return "/advisor";
     default:
-      return "/";
+      return "/home";
   }
 }
