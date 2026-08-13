@@ -11,6 +11,7 @@ import {
   newBookingEmail,
   newMessageEmail,
   payoutReleasedEmail,
+  sessionReminderEmail,
 } from "./templates";
 
 /**
@@ -99,6 +100,89 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     }
   } catch (err) {
     reportError("notifyBookingConfirmed", err, { bookingId });
+  }
+}
+
+/** A human "how soon" phrase for the reminder heading/subject. */
+function relativePhrase(scheduledAt: Date, now: Date): string {
+  const gapMin = Math.round((scheduledAt.getTime() - now.getTime()) / 60_000);
+  if (gapMin <= 90) return "in about an hour";
+  const hours = Math.round(gapMin / 60);
+  if (hours < 24) return `in about ${hours} hours`;
+  return "tomorrow";
+}
+
+/**
+ * Upcoming-session reminder to BOTH parties (session-reminder cron). The client
+ * is gated on their "session reminders" preference; advisors always receive it.
+ * The caller (cron route) has already claimed the send window atomically, so
+ * this just dispatches.
+ */
+export async function notifySessionReminder(sessionId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const s = await prisma.session.findUnique({
+      where: { id: sessionId },
+      select: {
+        scheduledAt: true,
+        booking: {
+          select: {
+            id: true,
+            status: true,
+            scopeDescription: true,
+            customer: {
+              select: {
+                businessName: true,
+                user: { select: { email: true, firstName: true, lastName: true, fullName: true, notificationPrefs: true } },
+              },
+            },
+            advisor: {
+              select: { user: { select: { email: true, firstName: true, lastName: true, fullName: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!s) return;
+    if (s.booking.status !== "confirmed" && s.booking.status !== "in_progress") return;
+
+    const whenLabel = when.format(s.scheduledAt);
+    const rel = relativePhrase(s.scheduledAt, new Date());
+    const advisorName = displayName(s.booking.advisor.user);
+    const clientName = displayName(s.booking.customer.user);
+    const url = `${appOrigin()}/bookings/${s.booking.id}/messages`;
+
+    // Client — gated on their "session reminders" preference.
+    if (resolvePrefs("CUSTOMER", s.booking.customer.user.notificationPrefs).sessionReminders) {
+      await sendEmail({
+        to: s.booking.customer.user.email,
+        ...sessionReminderEmail({
+          recipientName: clientName,
+          counterpartLabel: "Advisor",
+          counterpartName: advisorName,
+          relativePhrase: rel,
+          when: whenLabel,
+          scope: s.booking.scopeDescription,
+          url,
+        }),
+      });
+    }
+
+    // Advisor — always sent.
+    await sendEmail({
+      to: s.booking.advisor.user.email,
+      ...sessionReminderEmail({
+        recipientName: advisorName,
+        counterpartLabel: "Client",
+        counterpartName: s.booking.customer.businessName,
+        relativePhrase: rel,
+        when: whenLabel,
+        scope: s.booking.scopeDescription,
+        url,
+      }),
+    });
+  } catch (err) {
+    reportError("notifySessionReminder", err, { sessionId });
   }
 }
 

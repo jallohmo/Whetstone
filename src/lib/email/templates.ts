@@ -1,18 +1,27 @@
 /**
- * Transactional email templates. Plain inline-styled HTML (email clients ignore
- * external CSS and most <style> blocks), sharing one branded layout so every
- * message reads as Whetstone. Kept framework-free on purpose — these can migrate
- * to React Email later without touching the send path.
+ * Transactional email templates. Plain inline-styled, table-based HTML (email
+ * clients ignore external CSS/most <style> blocks and web fonts), sharing one
+ * branded shell so every message reads as Whetstone. Kept framework-free on
+ * purpose — these can migrate to React Email later without touching the send
+ * path.
  *
- * The Whetstone role-of-colour rule holds here too: ink is primary, blue is the
- * accent/link, green means money/verified.
+ * The shell mirrors the Whetstone marketing email design: 600px card with a 6px
+ * blue top bar, blue uppercase eyebrow, gray-50 detail panels with dashed
+ * dividers, an ink button, and the two-dot wordmark. Role-of-colour holds: ink
+ * is primary, blue is the accent/link, green means money.
  */
 
 const INK = "#111114";
 const BLUE = "#2e45ff";
-const GRAY = "#6b7280";
-const BORDER = "#e5e5e8";
+const CYAN = "#17c4e8";
+const BODY = "#5a5a62";
+const MUTED = "#7c7c85";
+const FOOTER = "#a6a6ae";
+const PANEL = "#f7f7f8";
+const DASH = "#cfcfd5";
 const CANVAS = "#f0f0f2";
+const GREEN = "#15803d";
+const FONT = "Arial,Helvetica,sans-serif";
 
 function esc(s: string): string {
   return s
@@ -22,58 +31,116 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** The two-dot wordmark, kept identical to the marketing template. */
+const LOGO = `<tr><td style="padding:4px 8px 20px 8px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="padding-right:9px;vertical-align:middle;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td width="12" height="12" bgcolor="${BLUE}" style="border-radius:12px;font-size:0;line-height:0;">&nbsp;</td>
+        <td width="5" style="font-size:0;line-height:0;">&nbsp;</td>
+        <td width="12" height="12" bgcolor="${CYAN}" style="border-radius:12px;font-size:0;line-height:0;">&nbsp;</td>
+      </tr></table>
+    </td>
+    <td style="font-family:${FONT};font-size:18px;font-weight:bold;color:${INK};letter-spacing:-0.5px;vertical-align:middle;">Whetstone</td>
+  </tr></table>
+</td></tr>`;
+
 interface LayoutOpts {
-  /** Hidden inbox preview line. */
   preview: string;
+  eyebrow: string;
   heading: string;
-  /** Pre-built inner HTML (already escaped where needed). */
+  /** Intro paragraph(s) + any panel, as pre-built HTML. */
   body: string;
   cta?: { label: string; url: string };
+  /** Closing line under the button. */
+  note?: string;
+  /** First footer line — why they're receiving this. */
+  footerReason: string;
 }
 
 /** Wrap content in the shared Whetstone shell. */
-function layout({ preview, heading, body, cta }: LayoutOpts): string {
+function layout({ preview, eyebrow, heading, body, cta, note, footerReason }: LayoutOpts): string {
   const button = cta
-    ? `<tr><td style="padding-top:8px">
-         <a href="${esc(cta.url)}" style="display:inline-block;background:${INK};color:#ffffff;
-            text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:8px">
-           ${esc(cta.label)}
-         </a>
+    ? `<tr><td style="padding:28px 40px 0 40px;">
+         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+           <td bgcolor="${INK}" style="background:${INK};border-radius:14px;">
+             <a href="${esc(cta.url)}" style="display:inline-block;padding:15px 30px;font-family:${FONT};font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:14px;">${esc(cta.label)}</a>
+           </td>
+         </tr></table>
        </td></tr>`
     : "";
 
-  return `<!doctype html>
+  const closing = `<tr><td style="padding:${cta ? "20px" : "24px"} 40px 40px 40px;">
+      <p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.5;color:${MUTED};">${note ?? "Questions? Just reply to this email."}</p>
+    </td></tr>`;
+
+  return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;background:${CANVAS};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK}">
-  <span style="display:none;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden">${esc(preview)}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CANVAS};padding:32px 16px">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid ${BORDER};border-radius:16px;overflow:hidden">
-        <tr><td style="padding:22px 28px;border-bottom:1px solid ${BORDER}">
-          <span style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:${INK}">Whetstone</span>
-        </td></tr>
-        <tr><td style="padding:28px">
-          <h1 style="margin:0 0 12px;font-size:20px;line-height:1.3;font-weight:700;color:${INK}">${esc(heading)}</h1>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:1.6;color:${GRAY}">
-            <tr><td style="padding-bottom:16px">${body}</td></tr>
-            ${button}
-          </table>
-        </td></tr>
-        <tr><td style="padding:20px 28px;border-top:1px solid ${BORDER};font-size:12px;color:${GRAY}">
-          Verified, insured, bounded advisory sessions.<br>
-          You can manage which emails you receive in your account settings.
-        </td></tr>
-      </table>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+</head>
+<body style="margin:0;padding:0;background:${CANVAS};-webkit-text-size-adjust:100%;">
+<span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;mso-hide:all;">${esc(preview)}</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${CANVAS}" style="background:${CANVAS};">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+${LOGO}
+<tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:24px;box-shadow:0 1px 2px rgba(17,17,20,0.04),0 12px 32px rgba(17,17,20,0.06);">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td height="6" bgcolor="${BLUE}" style="background:${BLUE};border-radius:24px 24px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
+    <tr><td style="padding:40px 40px 0 40px;">
+      <div style="font-family:${FONT};font-size:13px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:${BLUE};">${esc(eyebrow)}</div>
     </td></tr>
+    <tr><td style="padding:8px 40px 0 40px;">
+      <h1 style="margin:0;font-family:${FONT};font-size:30px;line-height:1.15;font-weight:bold;letter-spacing:-0.5px;color:${INK};">${esc(heading)}</h1>
+    </td></tr>
+    <tr><td style="padding:16px 40px 0 40px;">${body}</td></tr>
+    ${button}
+    ${closing}
   </table>
+</td></tr>
+<tr><td style="padding:26px 24px 8px 24px;">
+  <p style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:1.5;color:${FOOTER};">${esc(footerReason)}</p>
+  <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${FOOTER};">Verified, insured, bounded advisory sessions. Manage which emails you receive in your account settings.</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>`;
 }
 
-/** A neutral label:value line for the detail blocks. */
-function detail(label: string, value: string): string {
-  return `<div style="margin:2px 0"><span style="color:${GRAY}">${esc(label)}:</span> <span style="color:${INK};font-weight:600">${esc(value)}</span></div>`;
+/** Intro paragraph in the standard body colour. */
+function para(html: string): string {
+  return `<p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.55;color:${BODY};">${html}</p>`;
+}
+
+/** A gray-50 detail panel of label/value rows with dashed dividers. */
+function infoPanel(rows: { label: string; value: string }[]): string {
+  const inner = rows
+    .map((r, i) => {
+      const divider =
+        i > 0
+          ? `<tr><td colspan="2" height="1" style="font-size:0;line-height:0;padding:12px 0;"><div style="border-top:1px dashed ${DASH};font-size:0;line-height:0;">&nbsp;</div></td></tr>`
+          : "";
+      return `${divider}<tr>
+        <td width="86" valign="top" style="font-family:${FONT};font-size:14px;line-height:1.4;color:${MUTED};">${esc(r.label)}</td>
+        <td style="font-family:${FONT};font-size:15px;line-height:1.4;font-weight:bold;color:${INK};">${esc(r.value)}</td>
+      </tr>`;
+    })
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PANEL}" style="background:${PANEL};border-radius:18px;margin-top:24px;">
+    <tr><td style="padding:18px 22px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${inner}</table></td></tr>
+  </table>`;
+}
+
+/** A gray-50 panel wrapping arbitrary emphasis content (quote, amount, code). */
+function panel(inner: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${PANEL}" style="background:${PANEL};border-radius:18px;margin-top:24px;">
+    <tr><td style="padding:20px 22px;">${inner}</td></tr>
+  </table>`;
 }
 
 export interface EmailContent {
@@ -89,19 +156,21 @@ export function bookingConfirmedEmail(p: {
   scope: string;
   url: string;
 }): EmailContent {
+  const rows = [{ label: "Advisor", value: p.advisorName }];
+  if (p.when) rows.push({ label: "When", value: p.when });
+  rows.push({ label: "Focus", value: p.scope });
   return {
     subject: "Your Whetstone session is confirmed",
     html: layout({
       preview: `Your session with ${p.advisorName} is booked.`,
+      eyebrow: "Booking confirmed",
       heading: `You're booked in, ${p.customerName}`,
       body:
-        `<p style="margin:0 0 14px">Your session with <strong style="color:${INK}">${esc(p.advisorName)}</strong> is confirmed and payment is held securely until you've met.</p>` +
-        `<div style="background:${CANVAS};border-radius:10px;padding:14px 16px;margin:0 0 6px">` +
-        detail("Advisor", p.advisorName) +
-        (p.when ? detail("When", p.when) : "") +
-        detail("Focus", p.scope) +
-        `</div>`,
+        para(
+          `Your session with <strong style="color:${INK}">${esc(p.advisorName)}</strong> is confirmed, and payment is held securely until you've met.`,
+        ) + infoPanel(rows),
       cta: { label: "View booking", url: p.url },
+      footerReason: "You're receiving this because you booked a session on Whetstone.",
     }),
   };
 }
@@ -114,19 +183,20 @@ export function newBookingEmail(p: {
   scope: string;
   url: string;
 }): EmailContent {
+  const rows = [{ label: "Client", value: p.customerName }];
+  if (p.when) rows.push({ label: "When", value: p.when });
+  rows.push({ label: "Focus", value: p.scope });
   return {
     subject: "New Whetstone booking",
     html: layout({
       preview: `${p.customerName} booked a session with you.`,
+      eyebrow: "New booking",
       heading: `New booking, ${p.advisorName}`,
       body:
-        `<p style="margin:0 0 14px"><strong style="color:${INK}">${esc(p.customerName)}</strong> has booked a session with you.</p>` +
-        `<div style="background:${CANVAS};border-radius:10px;padding:14px 16px;margin:0 0 6px">` +
-        detail("Client", p.customerName) +
-        (p.when ? detail("When", p.when) : "") +
-        detail("Focus", p.scope) +
-        `</div>`,
+        para(`<strong style="color:${INK}">${esc(p.customerName)}</strong> has booked a session with you.`) +
+        infoPanel(rows),
       cta: { label: "Open booking", url: p.url },
+      footerReason: "You're receiving this because you're an advisor on Whetstone.",
     }),
   };
 }
@@ -138,16 +208,51 @@ export function newMessageEmail(p: {
   snippet: string;
   url: string;
 }): EmailContent {
-  const trimmed = p.snippet.length > 160 ? `${p.snippet.slice(0, 160)}…` : p.snippet;
+  const trimmed = p.snippet.length > 200 ? `${p.snippet.slice(0, 200)}…` : p.snippet;
   return {
     subject: `New message from ${p.senderName}`,
     html: layout({
       preview: `${p.senderName}: ${trimmed}`,
-      heading: `New message from ${p.senderName}`,
+      eyebrow: "New message",
+      heading: `Message from ${p.senderName}`,
       body:
-        `<p style="margin:0 0 14px">You have a new message in your session thread:</p>` +
-        `<div style="background:${CANVAS};border-left:3px solid ${BLUE};border-radius:6px;padding:12px 16px;margin:0 0 6px;color:${INK}">${esc(trimmed)}</div>`,
+        para("You have a new message in your session thread:") +
+        panel(
+          `<div style="font-family:${FONT};font-size:15px;line-height:1.5;color:${INK};border-left:3px solid ${BLUE};padding-left:14px;">${esc(trimmed)}</div>`,
+        ),
       cta: { label: "Reply", url: p.url },
+      footerReason: "You're receiving this because you have an active session on Whetstone.",
+    }),
+  };
+}
+
+/** To either party: an upcoming session (session-reminder cron, 24h + 1h). */
+export function sessionReminderEmail(p: {
+  recipientName: string;
+  counterpartLabel: "Advisor" | "Client";
+  counterpartName: string;
+  relativePhrase: string;
+  when: string | null;
+  scope: string;
+  url: string;
+}): EmailContent {
+  const rows: { label: string; value: string }[] = [
+    { label: p.counterpartLabel, value: p.counterpartName },
+  ];
+  if (p.when) rows.push({ label: "When", value: p.when });
+  rows.push({ label: "Focus", value: p.scope });
+  return {
+    subject: `Reminder: your Whetstone session is ${p.relativePhrase}`,
+    html: layout({
+      preview: `Your session with ${p.counterpartName} is ${p.relativePhrase}.`,
+      eyebrow: "Session reminder",
+      heading: "Your session is coming up",
+      body:
+        para(
+          `A reminder that your session with <strong style="color:${INK}">${esc(p.counterpartName)}</strong> is <strong style="color:${INK}">${esc(p.relativePhrase)}</strong>.`,
+        ) + infoPanel(rows),
+      cta: { label: "Join session", url: p.url },
+      footerReason: "You're receiving this because you have an upcoming session on Whetstone.",
     }),
   };
 }
@@ -162,14 +267,16 @@ export function payoutReleasedEmail(p: {
     subject: "Your Whetstone payout has been released",
     html: layout({
       preview: `${p.amount} is on its way to you.`,
+      eyebrow: "Payout released",
       heading: "Payout released",
       body:
-        `<p style="margin:0 0 14px">Nice work, ${esc(p.advisorName)}. Your earnings for a completed session have been released.</p>` +
-        `<div style="background:${CANVAS};border-radius:10px;padding:16px;margin:0 0 6px">` +
-        `<div style="font-size:26px;font-weight:700;color:#15803d">${esc(p.amount)}</div>` +
-        `<div style="color:${GRAY};font-size:13px;margin-top:2px">released to your connected account</div>` +
-        `</div>`,
+        para(`Nice work, ${esc(p.advisorName)}. Your earnings for a completed session have been released.`) +
+        panel(
+          `<div style="font-family:${FONT};font-size:28px;font-weight:bold;color:${GREEN};letter-spacing:-0.5px;">${esc(p.amount)}</div>` +
+            `<div style="font-family:${FONT};font-size:13px;color:${MUTED};margin-top:4px;">released to your connected account</div>`,
+        ),
       cta: { label: "View earnings", url: p.url },
+      footerReason: "You're receiving this because you're an advisor on Whetstone.",
     }),
   };
 }

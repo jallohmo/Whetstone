@@ -111,10 +111,23 @@ the account page, except the client receipt which always sends):
 - **Booking confirmed** → client receipt + advisor "new booking".
 - **New message** → the other party in the thread.
 - **Payout released** → advisor.
+- **Session reminders** → both parties, 24h and 1h before (see §5c).
 
-Not yet wired: **session reminders** (they're time-based, so they need a
-scheduler — Supabase `pg_cron`/edge function or a Vercel Cron calling the same
-`lib/email` helpers). The `sessionReminders` preference already exists for it.
+### 5c. Session reminders (Vercel Cron)
+
+Time-based, so they run from a scheduled endpoint rather than inline:
+
+- `vercel.json` registers a cron hitting `/api/cron/session-reminders` every 15
+  minutes. **Sub-daily crons require a Vercel plan that allows them (Pro+).** On
+  Hobby, either accept once-daily or run the schedule elsewhere (e.g. Supabase
+  `pg_cron` + `pg_net` calling the same endpoint with the Bearer header).
+- Set **`CRON_SECRET`** in Vercel. The endpoint returns 401 unless the request
+  carries `Authorization: Bearer <CRON_SECRET>` — Vercel Cron sends this
+  automatically once the env var is set. Without it, reminders never run.
+- Reminders fire at **24h** and **1h** before each session; the client is gated
+  on the `sessionReminders` preference, advisors always receive them. Each
+  window is stamped on the `sessions` row so it sends exactly once (migration
+  `0012`). Requires `RESEND_API_KEY` (§5b) — no key, no email.
 
 ## 6. Pre-launch activities — production domain & Stripe go-live
 
@@ -158,6 +171,19 @@ To take real payments:
    - ⚠️ The sandbox endpoint (§2) only fires for test-mode payments; live
      payments won't be fulfilled until this live endpoint exists.
 5. Confirm the Stripe account settles in **AUD** (matches the platform currency).
+
+### 6c. Session-reminder cron (Vercel plan + secret)
+
+The reminder cron (§5c) runs every 15 minutes, which is a **sub-daily**
+schedule. To make it work in production:
+
+1. **Upgrade the Vercel plan to one that allows sub-daily crons (Pro+).** The
+   Hobby plan only runs crons once per day, which is too coarse for 24h/1h
+   reminders. Either upgrade, or move the schedule to Supabase `pg_cron` +
+   `pg_net` hitting the same endpoint (see §5c).
+2. **Set `CRON_SECRET`** in Vercel (a long random string, e.g.
+   `openssl rand -hex 32`). The endpoint returns 401 without it, so reminders
+   won't run until it's set. Requires `RESEND_API_KEY` (§5b) to actually send.
 
 ## 7. Verify with /api/health
 
