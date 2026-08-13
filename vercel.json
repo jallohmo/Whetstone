@@ -4,6 +4,6 @@
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
   "crons": [
-    { "path": "/api/cron/session-reminders", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/session-reminders", "schedule": "0 9 * * *" }
   ]
 }
