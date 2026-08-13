@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="wsGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E45FF"></stop>
+      <stop offset="1" stop-color="#17C4E8"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="30" fill="#ffffff" stroke="#111114" stroke-width="6"></rect>
+  <line x1="38" y1="52" x2="82" y2="52" stroke="#B9C2FF" stroke-width="7" stroke-linecap="round"></line>
+  <line x1="38" y1="70" x2="82" y2="70" stroke="#B9C2FF" stroke-width="7" stroke-linecap="round"></line>
+  <line x1="42" y1="82" x2="78" y2="40" stroke="url(#wsGrad)" stroke-width="12" stroke-linecap="round"></line>
+</svg>

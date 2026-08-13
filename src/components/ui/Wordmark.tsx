@@ -1,13 +1,12 @@
 import { cn } from "@/lib/cn";
 
 /**
- * The Whetstone wordmark: a two-dot glyph (8px blue + 8px cyan) followed by
- * "Whetstone" in General Sans 700. Used in the customer pill nav, advisor
- * sidebar, and auth brand panels. The glyph is a placeholder for a real logo
- * mark if/when one exists (see the design handoff, "Assets").
+ * The Whetstone wordmark: the rounded-square logo mark (a blue→cyan "sharpening
+ * stroke" over two rails) followed by "Whetstone" in General Sans 700. Used in
+ * the customer pill nav, advisor sidebar, and auth brand panels.
  *
- * `tone="onDark"` inverts the wordmark text to white for use on the blue/ink
- * brand panels; the dots keep their brand colours.
+ * `tone="onDark"` inverts the wordmark TEXT to white for the blue/ink brand
+ * panels; the mark itself is a white tile that already reads on dark.
  */
 export function Wordmark({
   size = "md",
@@ -24,12 +23,11 @@ export function Wordmark({
     lg: "text-[22px]",
   }[size];
 
+  const mark = { sm: 22, md: 26, lg: 30 }[size];
+
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span className="inline-flex items-center gap-1" aria-hidden>
-        <span className="h-2 w-2 rounded-pill bg-brand-blue" />
-        <span className="h-2 w-2 rounded-pill bg-brand-cyan" />
-      </span>
+      <LogoMark size={mark} />
       <span
         className={cn(
           "font-bold tracking-[-0.02em]",
@@ -40,5 +38,30 @@ export function Wordmark({
         Whetstone
       </span>
     </span>
+  );
+}
+
+/** The standalone logo mark (also used as the favicon / app icon). */
+export function LogoMark({ size = 26, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 120 120"
+      width={size}
+      height={size}
+      fill="none"
+      aria-hidden
+      className={cn("shrink-0", className)}
+    >
+      <defs>
+        <linearGradient id="wsGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#2E45FF" />
+          <stop offset="1" stopColor="#17C4E8" />
+        </linearGradient>
+      </defs>
+      <rect x="8" y="8" width="104" height="104" rx="30" fill="#ffffff" stroke="#111114" strokeWidth="6" />
+      <line x1="38" y1="52" x2="82" y2="52" stroke="#B9C2FF" strokeWidth="7" strokeLinecap="round" />
+      <line x1="38" y1="70" x2="82" y2="70" stroke="#B9C2FF" strokeWidth="7" strokeLinecap="round" />
+      <line x1="42" y1="82" x2="78" y2="40" stroke="url(#wsGrad)" strokeWidth="12" strokeLinecap="round" />
+    </svg>
   );
 }
