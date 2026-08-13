@@ -183,12 +183,14 @@ To take real payments:
 The reminder cron (§5c) currently runs **once daily** (`0 9 * * *`) so it
 deploys on Hobby. For both the 24h and 1h reminders to fire:
 
-1. **Upgrade the Vercel plan to one that allows sub-daily crons (Pro+)** and
-   change `vercel.json` back to `*/15 * * * *`. On Hobby only the 24h reminder
-   is meaningful, and a sub-daily schedule there breaks the deployment. (Or move
-   the schedule to Supabase `pg_cron` + `pg_net` hitting the same endpoint — see
-   §5c.)
-2. **Set `CRON_SECRET`** in Vercel (a long random string, e.g.
+1. **[ ] Enable sub-daily reminders (Pro plan).** Upgrade Vercel to a plan that
+   allows sub-daily crons (Pro+) and change `vercel.json` back to
+   `*/15 * * * *`. Until then the schedule stays daily and **only the 24h
+   reminder fires** — the 1h reminder needs this. A sub-daily schedule on Hobby
+   breaks the deployment, so don't set `*/15` before upgrading. (Alternative:
+   run the schedule from Supabase `pg_cron` + `pg_net` against the same
+   endpoint — see §5c.)
+2. **[ ] Set `CRON_SECRET`** in Vercel (a long random string, e.g.
    `openssl rand -hex 32`). The endpoint returns 401 without it, so reminders
    won't run until it's set. Requires `RESEND_API_KEY` (§5b) to actually send.
 
