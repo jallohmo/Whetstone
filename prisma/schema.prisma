@@ -233,6 +233,10 @@ model Session {
   scheduledAt  DateTime @map("scheduled_at")
   status       String   @default("scheduled") // "scheduled" | "completed" | "no_show" | "rescheduled"
   videoCallUrl String?  @map("video_call_url")
+  // Reminder dispatch stamps (session-reminder cron). Null = not yet sent; set
+  // atomically when the reminder for that window goes out, so it sends once.
+  reminded24hAt DateTime? @map("reminded_24h_at")
+  reminded1hAt  DateTime? @map("reminded_1h_at")
 
   @@index([bookingId])
   @@map("sessions")

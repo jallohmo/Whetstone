@@ -226,6 +226,37 @@ export function newMessageEmail(p: {
   };
 }
 
+/** To either party: an upcoming session (session-reminder cron, 24h + 1h). */
+export function sessionReminderEmail(p: {
+  recipientName: string;
+  counterpartLabel: "Advisor" | "Client";
+  counterpartName: string;
+  relativePhrase: string;
+  when: string | null;
+  scope: string;
+  url: string;
+}): EmailContent {
+  const rows: { label: string; value: string }[] = [
+    { label: p.counterpartLabel, value: p.counterpartName },
+  ];
+  if (p.when) rows.push({ label: "When", value: p.when });
+  rows.push({ label: "Focus", value: p.scope });
+  return {
+    subject: `Reminder: your Whetstone session is ${p.relativePhrase}`,
+    html: layout({
+      preview: `Your session with ${p.counterpartName} is ${p.relativePhrase}.`,
+      eyebrow: "Session reminder",
+      heading: "Your session is coming up",
+      body:
+        para(
+          `A reminder that your session with <strong style="color:${INK}">${esc(p.counterpartName)}</strong> is <strong style="color:${INK}">${esc(p.relativePhrase)}</strong>.`,
+        ) + infoPanel(rows),
+      cta: { label: "Join session", url: p.url },
+      footerReason: "You're receiving this because you have an upcoming session on Whetstone.",
+    }),
+  };
+}
+
 /** To the advisor: held earnings were released (gated on "payoutConfirmations"). */
 export function payoutReleasedEmail(p: {
   advisorName: string;
