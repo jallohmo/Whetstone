@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, GitCompareArrows, LayoutDashboard, ShieldCheck } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { LogoMark } from "@/components/ui/Wordmark";
 
 /**
  * Ops shell (Screens 15-18). Dark 212px rail, dense gray150 canvas, 13px base
@@ -22,7 +23,8 @@ export default function OpsLayout({
   return (
     <div className="flex min-h-screen bg-gray-150 text-[13px]">
       <aside className="hidden w-[212px] shrink-0 flex-col bg-gray-900 p-3 text-gray-300 md:flex">
-        <div className="mb-6 px-2 pt-2 text-sm font-bold tracking-tight text-white">
+        <div className="mb-6 flex items-center gap-2 px-2 pt-2 text-sm font-bold tracking-tight text-white">
+          <LogoMark size={20} />
           Whetstone Ops
         </div>
         <nav className="flex flex-col gap-0.5">

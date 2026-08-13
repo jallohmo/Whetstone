@@ -13,7 +13,6 @@
 
 const INK = "#111114";
 const BLUE = "#2e45ff";
-const CYAN = "#17c4e8";
 const BODY = "#5a5a62";
 const MUTED = "#7c7c85";
 const FOOTER = "#a6a6ae";
@@ -31,15 +30,13 @@ function esc(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** The two-dot wordmark, kept identical to the marketing template. */
+// Email logo. Uses a hosted PNG (email clients don't render inline SVG) served
+// from /public at the production origin. Resolves once the domain is live.
+const LOGO_URL = `${(process.env.NEXT_PUBLIC_SITE_URL || "https://app.whetstone.au").replace(/\/+$/, "")}/whetstone-icon.png`;
 const LOGO = `<tr><td style="padding:4px 8px 20px 8px;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-    <td style="padding-right:9px;vertical-align:middle;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="12" height="12" bgcolor="${BLUE}" style="border-radius:12px;font-size:0;line-height:0;">&nbsp;</td>
-        <td width="5" style="font-size:0;line-height:0;">&nbsp;</td>
-        <td width="12" height="12" bgcolor="${CYAN}" style="border-radius:12px;font-size:0;line-height:0;">&nbsp;</td>
-      </tr></table>
+    <td style="padding-right:10px;vertical-align:middle;font-size:0;line-height:0;">
+      <img src="${LOGO_URL}" width="30" height="30" alt="Whetstone" style="display:block;border:0;outline:none;text-decoration:none;">
     </td>
     <td style="font-family:${FONT};font-size:18px;font-weight:bold;color:${INK};letter-spacing:-0.5px;vertical-align:middle;">Whetstone</td>
   </tr></table>
