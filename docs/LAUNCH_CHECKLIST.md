@@ -172,6 +172,19 @@ To take real payments:
      payments won't be fulfilled until this live endpoint exists.
 5. Confirm the Stripe account settles in **AUD** (matches the platform currency).
 
+### 6c. Session-reminder cron (Vercel plan + secret)
+
+The reminder cron (§5c) runs every 15 minutes, which is a **sub-daily**
+schedule. To make it work in production:
+
+1. **Upgrade the Vercel plan to one that allows sub-daily crons (Pro+).** The
+   Hobby plan only runs crons once per day, which is too coarse for 24h/1h
+   reminders. Either upgrade, or move the schedule to Supabase `pg_cron` +
+   `pg_net` hitting the same endpoint (see §5c).
+2. **Set `CRON_SECRET`** in Vercel (a long random string, e.g.
+   `openssl rand -hex 32`). The endpoint returns 401 without it, so reminders
+   won't run until it's set. Requires `RESEND_API_KEY` (§5b) to actually send.
+
 ## 7. Verify with /api/health
 
 After any deploy, load **`https://<domain>/api/health`** — it reports database
