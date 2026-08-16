@@ -14,6 +14,16 @@ const nextConfig = {
       },
     ],
   },
+  typescript: {
+    // Exclude test files from Next.js build type checking
+    // (They use dev-only dependencies like @playwright/test, jest, etc.)
+    tsconfigPath: './tsconfig.json',
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    // Exclude test files from ESLint during build
+    dirs: ['src', 'pages', 'utils', 'lib', 'components', 'app'],
+  },
 };
 
 export default nextConfig;
