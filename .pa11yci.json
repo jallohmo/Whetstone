@@ -1,0 +1,20 @@
+{
+  "runners": ["axe", "htmlcs"],
+  "timeout": 10000,
+  "wait": 5000,
+  "chromeLaunchConfig": {
+    "args": ["--no-sandbox"]
+  },
+  "urls": [
+    "http://localhost:3000/",
+    "http://localhost:3000/login",
+    "http://localhost:3000/signup",
+    "http://localhost:3000/home",
+    "http://localhost:3000/needs/new",
+    "http://localhost:3000/advisors",
+    "http://localhost:3000/bookings",
+    "http://localhost:3000/account"
+  ],
+  "standard": "WCAG2AA",
+  "threshold": 5
+}
