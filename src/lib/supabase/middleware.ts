@@ -7,8 +7,32 @@ type CookieToSet = { name: string; value: string; options?: CookieOptions };
  * Refreshes the Supabase session on every request and returns the user + a
  * response carrying the updated auth cookies. Route-group gating in
  * src/middleware.ts uses the returned user/role to decide access.
+ *
+ * Fails CLOSED, mirroring getCurrentUser() (src/lib/auth.ts): any infrastructure
+ * error — missing env vars, Supabase unreachable — is logged and treated as "no
+ * session" rather than allowed to escape. Middleware runs on EVERY route, so an
+ * uncaught throw here 500s the entire site, public marketing pages included,
+ * instead of degrading to logged-out. Returning a null user can only ever deny
+ * access: the gates in src/middleware.ts redirect an absent user to login or
+ * signup, so this never grants anything by accident.
  */
 export async function updateSession(request: NextRequest) {
+  try {
+    return await readSession(request);
+  } catch (err) {
+    // console rather than reportError: middleware runs on the edge runtime,
+    // where the Sentry/node integration in lib/observability isn't available.
+    console.error("updateSession: failed to resolve the session —", err);
+    return {
+      response: NextResponse.next({ request }),
+      user: null,
+      role: null,
+      mfaRequired: false,
+    };
+  }
+}
+
+async function readSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { keysForRole } from "@/lib/notifications";
+import { checkPasswordBreached, breachedPasswordMessage } from "@/lib/password-security";
 
 export interface AccountFormState {
   error?: string;
@@ -115,6 +116,11 @@ export async function changePassword(
 
   if (next.length < 8) return { error: "Use a new password of at least 8 characters." };
   if (next !== confirm) return { error: "The new passwords don't match." };
+
+  // Leaked-password protection (see lib/password-security). Checked before
+  // re-authenticating so a breached choice is rejected without the round trip.
+  const breach = await checkPasswordBreached(next);
+  if (breach.breached) return { error: breachedPasswordMessage(breach.count) };
 
   const supabase = createClient();
   const {

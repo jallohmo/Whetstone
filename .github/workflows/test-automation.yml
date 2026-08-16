@@ -138,11 +138,11 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Start application
-        run: |
-          npm run build
-          npm run start &
-          sleep 5
+      # Build only. Playwright's own `webServer` block starts `npm run start` and
+      # waits for it to answer — starting a second server here would collide with
+      # it on port 3000, because reuseExistingServer is false under CI.
+      - name: Build application
+        run: npm run build
 
       - name: Run Playwright tests
         run: npm run test:e2e
@@ -179,7 +179,10 @@ jobs:
   performance:
     name: Performance (Lighthouse CI)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    # Nightly/manual only. These thresholds have never been measured against
+    # real infrastructure, so they report quality signals rather than gate
+    # merges to main. Promote back to push-on-main once the numbers are known.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
 
     steps:
@@ -243,7 +246,10 @@ jobs:
   accessibility:
     name: Accessibility Audit (Pa11y)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    # Nightly/manual only. These thresholds have never been measured against
+    # real infrastructure, so they report quality signals rather than gate
+    # merges to main. Promote back to push-on-main once the numbers are known.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: build
 
     steps:

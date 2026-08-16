@@ -5,25 +5,13 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentUser, roleHome } from "@/lib/auth";
+import { safeNext } from "@/lib/safe-next";
+import { checkPasswordBreached, breachedPasswordMessage } from "@/lib/password-security";
 import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@prisma/client";
 
 export interface AuthFormState {
   error?: string;
-}
-
-/**
- * Sanitise a post-auth "?next=" destination. Only same-site absolute paths are
- * accepted — anything else (an absolute URL, a protocol-relative "//evil.com",
- * a backslash variant some parsers normalise to "/") falls back to null so the
- * caller uses the role's home. `next` reaches these actions from a query string,
- * so without this it is an open redirect.
- */
-function safeNext(raw: unknown): string | null {
-  const value = String(raw ?? "").trim();
-  if (!value.startsWith("/")) return null;
-  if (value.startsWith("//") || value.startsWith("/\\")) return null;
-  return value;
 }
 
 /** Origin for building the email-confirmation callback URL. */
@@ -77,6 +65,14 @@ export async function signUp(
 
   if (password.length < 8) {
     return { error: "Use a password of at least 8 characters." };
+  }
+
+  // Leaked-password protection (see lib/password-security). Runs before the
+  // account exists, so a compromised credential never gets created in the first
+  // place. Fails open, so an HIBP outage cannot block signups.
+  const breach = await checkPasswordBreached(password);
+  if (breach.breached) {
+    return { error: breachedPasswordMessage(breach.count) };
   }
 
   const supabase = createClient();
@@ -142,6 +138,13 @@ export async function updatePassword(
   const password = String(formData.get("password") ?? "");
   if (password.length < 8) {
     return { error: "Use a password of at least 8 characters." };
+  }
+
+  // Checked here too: a reset is frequently triggered BY a compromise, so this is
+  // the worst moment to accept a password that is already in the corpus.
+  const breach = await checkPasswordBreached(password);
+  if (breach.breached) {
+    return { error: breachedPasswordMessage(breach.count) };
   }
 
   const supabase = createClient();

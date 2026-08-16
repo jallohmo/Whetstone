@@ -11,6 +11,14 @@ import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000'
 
+/**
+ * Escape hatch for environments that already have a browser on disk and cannot
+ * reach Playwright's CDN (sandboxes, air-gapped runners). CI leaves this unset
+ * and uses `npx playwright install` as normal.
+ */
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined
+const launchOptions = executablePath ? { executablePath } : undefined
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
@@ -44,7 +52,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], launchOptions },
     },
 
     {
