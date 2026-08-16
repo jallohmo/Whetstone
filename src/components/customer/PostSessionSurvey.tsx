@@ -44,7 +44,7 @@ export function PostSessionSurvey({ bookingId }: { bookingId: string }) {
         </div>
       </Field>
 
-      <Field label="Did it address your problem?">
+      <Field label="Did it address your business challenge?">
         <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1">
           {[
             { v: "yes", l: "Yes" },

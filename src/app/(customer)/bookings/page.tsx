@@ -58,7 +58,7 @@ export default async function ClientBookingsPage() {
         <Card className="text-body text-gray-500">
           You have no bookings yet.{" "}
           <Link href="/needs/new" className="font-semibold text-brand-blue hover:underline">
-            Describe a problem
+            Describe a business challenge
           </Link>{" "}
           to get matched.
         </Card>

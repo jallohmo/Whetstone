@@ -3,7 +3,7 @@ import { Lightbulb } from "lucide-react";
 /**
  * The component most directly created by the scope broadening to all industries.
  * A short, plain-language line connecting an advisor's specific background to the
- * customer's specific industry/problem — relevance is no longer implicit from a
+ * customer's specific industry/challenge — relevance is no longer implicit from a
  * single-vertical context, so it gets real design/copy attention here.
  *
  * e.g. "12 years running a regional manufacturing business, now advises on cash

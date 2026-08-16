@@ -231,12 +231,12 @@ export default async function AdvisorHomePage() {
               <div className="flex flex-col gap-2.5">
                 {upcoming.map((s, i) => {
                   const c = s.booking.customer;
-                  const problem = c.needs[0]?.problemArea ?? "Advisory session";
+                  const challenge = c.needs[0]?.problemArea ?? "Advisory session";
                   return (
                     <div key={s.id} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
                       <Avatar name={c.businessName} src={c.user.avatarUrl} size={40} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-body font-semibold text-ink">{problem}</p>
+                        <p className="truncate text-body font-semibold text-ink">{challenge}</p>
                         <p className="ws-mono mt-0.5 text-sm text-gray-500">{dateTime.format(s.scheduledAt)}</p>
                       </div>
                       <Link

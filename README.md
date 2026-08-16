@@ -131,7 +131,7 @@ Real **Supabase Auth** (email + password) is wired:
   truth (reads `public.users`, not client metadata).
 - **Signup-first**: posting a need requires an account, so a `Need` is owned by a
   `CustomerProfile` from creation. An anonymous visitor who clicks "Describe your
-  problem" is sent to `/signup?next=/needs/new` and lands back on the form. This
+  business challenge" is sent to `/signup?next=/needs/new` and lands back on the form. This
   is what lets the client home list their needs and lets ops email them when the
   shortlist is released — and it satisfies the `needs` RLS policy, which scopes
   rows by `customer_id → auth.uid()` and could never match an ownerless row.

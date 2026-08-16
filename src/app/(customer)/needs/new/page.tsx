@@ -41,7 +41,7 @@ export default async function NewNeedPage() {
         <BookingStepper current="describe" />
       </div>
       <PageHeader
-        title="Describe your problem"
+        title="Describe your business challenge"
         subtitle="Tell us what you're dealing with and we'll match you with a few people who've been there."
       />
       <Card>

@@ -23,8 +23,8 @@ export default async function SignupPage({
         <div className="p-8 sm:p-10">
           <h1 className="text-h1 text-ink">Create your account</h1>
           <p className="mt-2 text-body text-gray-500">
-            Free to join. Create an account to describe your problem and get a
-            hand-picked shortlist of verified, insured advisors.
+            Free to join. Create an account to describe your business challenge and
+            get a hand-picked shortlist of verified, insured advisors.
           </p>
 
           <div className="mt-6">

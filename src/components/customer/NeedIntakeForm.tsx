@@ -30,7 +30,7 @@ function SelectShell({ children }: { children: React.ReactNode }) {
 
 /**
  * Screen 2 / NeedIntakeForm (A2). Structured taxonomy selector (industry ->
- * sub-specialty), problem area, description. Feels like "ask a question", not
+ * sub-specialty), challenge, description. Feels like "ask a question", not
  * "fill out an application". Reached only by a signed-in client (middleware gates
  * /needs/*), so the need is owned from creation. Options come from
  * IndustryTaxonomy (never hardcoded); submits to the createNeed server action,
@@ -94,7 +94,7 @@ export function NeedIntakeForm({
         </Field>
       )}
 
-      <Field label="What's the problem area?" hint="e.g. pricing, cash flow, compliance, a bottleneck, a transition.">
+      <Field label="What's the challenge?" hint="e.g. pricing, cash flow, compliance, a bottleneck, a transition.">
         <Input name="problemArea" placeholder="In a few words…" required />
       </Field>
 

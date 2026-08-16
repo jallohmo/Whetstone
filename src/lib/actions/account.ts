@@ -257,7 +257,7 @@ export async function deleteAccount(): Promise<{ error?: string }> {
   // Needs used to be DETACHED here (customer_id set to null) to keep the ops match
   // log. That is no longer possible now a need is owned by definition, and it was
   // the wrong default anyway: a need holds the client's free-text description of
-  // their business problems, so it should not outlive the account that posted it.
+  // their business challenges, so it should not outlive the account that posted it.
   // Only accounts with zero bookings reach this point — anything with real history
   // is refused above and handled by support.
   await prisma.$transaction(async (tx) => {

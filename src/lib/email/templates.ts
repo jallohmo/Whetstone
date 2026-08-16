@@ -277,16 +277,16 @@ export function matchesReadyEmail(p: {
       heading: `We found ${people}, ${p.customerName}`,
       body:
         para(
-          `Our team went through your problem by hand and picked ${people} who've actually dealt with it. Every one is identity-checked, reference-verified and insured.`,
+          `Our team went through your business challenge by hand and picked ${people} who've actually dealt with it. Every one is identity-checked, reference-verified and insured.`,
         ) +
         infoPanel([
-          { label: "Problem", value: p.problemArea },
+          { label: "Challenge", value: p.problemArea },
           { label: "Industry", value: p.industry },
           { label: "Shortlist", value: `${p.advisorCount} verified ${p.advisorCount === 1 ? "advisor" : "advisors"}` },
         ]),
       cta: { label: `View your ${noun}`, url: p.url },
       note: "Sessions have a fixed scope and price, and payment is held until you've met.",
-      footerReason: "You're receiving this because you posted a problem on Whetstone.",
+      footerReason: "You're receiving this because you posted a business challenge on Whetstone.",
     }),
   };
 }

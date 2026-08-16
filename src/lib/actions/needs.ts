@@ -28,7 +28,7 @@ export async function createNeed(formData: FormData) {
   const businessName = String(formData.get("businessName") ?? "").trim();
 
   if (!industryId || !problemArea || !description) {
-    throw new Error("Industry, problem area, and description are required.");
+    throw new Error("Industry, challenge, and description are required.");
   }
 
   // If a sub-specialty was chosen, record the most specific taxonomy node.

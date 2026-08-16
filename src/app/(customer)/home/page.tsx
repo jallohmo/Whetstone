@@ -122,7 +122,7 @@ export default async function ClientHomePage() {
           href="/needs/new"
           className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
         >
-          <Plus size={16} strokeWidth={2} /> Describe a new problem
+          <Plus size={16} strokeWidth={2} /> Describe a new challenge
         </Link>
       </div>
 
@@ -152,9 +152,12 @@ export default async function ClientHomePage() {
       <div className="grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
         {/* Left column */}
         <div className="flex flex-col gap-5">
-          {/* Your problems — the way back to a shortlist. */}
+          {/* Your business challenges — the way back to a shortlist. */}
           {needs.length > 0 && (
-            <DashCard title="Your problems" action={{ label: "Describe another", href: "/needs/new" }}>
+            <DashCard
+              title="Your business challenges"
+              action={{ label: "Describe another", href: "/needs/new" }}
+            >
               <div className="flex flex-col divide-y divide-dashed divide-gray-200">
                 {needs.map((n) => {
                   const ready = n.released && n.advisorCount > 0;
@@ -236,7 +239,7 @@ export default async function ClientHomePage() {
                 href="/needs/new"
                 className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
               >
-                Describe your problem <ArrowRight size={15} strokeWidth={2} />
+                Describe your business challenge <ArrowRight size={15} strokeWidth={2} />
               </Link>
             </Card>
           )}
@@ -459,7 +462,7 @@ async function loadPendingReview(customerId: string) {
 }
 
 /**
- * The client's posted problems and where each one has got to. Without this the
+ * The client's posted business challenges and where each one has got to. Without this the
  * shortlist URL is effectively unlisted — the "matches are ready" email would be
  * the only way back to it, which is the fragility the guest flow had.
  */

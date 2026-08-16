@@ -70,7 +70,7 @@ export async function signUp(
   const password = String(formData.get("password") ?? "");
   const requestedRole = String(formData.get("role") ?? "CUSTOMER");
   const role: UserRole = requestedRole === "ADVISOR" ? "ADVISOR" : "CUSTOMER";
-  // Signup-first funnel: someone who clicked "Describe your problem" arrives via
+  // Signup-first funnel: someone who clicked "Describe your business challenge" arrives via
   // /signup?next=/needs/new and must land back there, not on the generic home.
   const next = safeNext(formData.get("next"));
   const destination = next || roleHome(role);
