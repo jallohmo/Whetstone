@@ -230,12 +230,12 @@ export default async function LandingPage() {
             {
               n: "01",
               title: "Describe your problem",
-              body: "Plain language, no account needed. Tell us the industry and what's actually going on.",
+              body: "Create a free account, then tell us the industry and what's actually going on. Plain language.",
             },
             {
               n: "02",
               title: "Meet your matches",
-              body: "We hand-pick a short list of verified experts who've dealt with exactly this.",
+              body: "We hand-pick a short list of verified experts who've dealt with exactly this, and email you when it's ready.",
             },
             {
               n: "03",

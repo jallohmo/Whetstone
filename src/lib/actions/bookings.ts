@@ -1,28 +1,28 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, displayName } from "@/lib/auth";
 
 /**
  * A4/A5 — Create a booking from an advisor + package. Session count, scope, price
  * and CURRENCY are all COPIED from the package at booking time (never referenced
  * live), protecting the bounded-scope guarantee if packages change later.
  *
- * Customer identity: if the user is signed in (Supabase Auth), the booking is
- * tied to their real CustomerProfile. If not, the guest-need -> account-at-booking
- * fallback still resolves a lightweight customer from an email, so the no-account
- * need flow keeps working end to end.
+ * Customer identity: always the signed-in user. Middleware gates /bookings/*, so
+ * the redirect below is the server-side backstop. (This replaced a guest fallback
+ * that minted a User row with a random id and a synthetic @whetstone.local email —
+ * an account that could never be signed into, because the id did not exist in
+ * Supabase auth.users.)
  */
 export async function createBooking(formData: FormData) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/signup");
+
   const advisorId = String(formData.get("advisorId") ?? "");
   const packageId = String(formData.get("packageId") ?? "");
   const needId = String(formData.get("needId") ?? "") || null;
   const slotId = String(formData.get("slotId") ?? "") || null;
-  const email =
-    String(formData.get("email") ?? "").trim().toLowerCase() ||
-    `guest+${randomUUID().slice(0, 8)}@whetstone.local`;
 
   if (!advisorId || !packageId) {
     throw new Error("Advisor and package are required to book.");
@@ -30,15 +30,25 @@ export async function createBooking(formData: FormData) {
 
   const pkg = await prisma.package.findUniqueOrThrow({ where: { id: packageId } });
 
+  const need = needId
+    ? await prisma.need.findUnique({
+        where: { id: needId },
+        select: { industryId: true, customerId: true },
+      })
+    : null;
+
   const industryId =
-    (needId && (await prisma.need.findUnique({ where: { id: needId } }))?.industryId) ||
+    need?.industryId ||
     (await prisma.industryTaxonomy.findFirstOrThrow({ where: { parentId: null } })).id;
 
-  // Prefer the authenticated customer; fall back to guest resolution.
-  const current = await getCurrentUser();
-  const customer = current
-    ? await resolveAuthedCustomer(current.id, current.email, industryId)
-    : await resolveCustomer(email, industryId);
+  const customer = await resolveAuthedCustomer(current, industryId);
+
+  // Needs are owned from creation, so this is an ownership assertion rather than
+  // the guest-need attachment it replaced: a booking must not quietly re-parent
+  // someone else's need by passing its id in the form.
+  if (needId && need?.customerId !== customer.id) {
+    throw new Error("That need doesn't belong to your account.");
+  }
 
   // Validate the chosen availability slot (if any) up front.
   const slot = slotId
@@ -76,11 +86,6 @@ export async function createBooking(formData: FormData) {
       });
     }
 
-    // Attach the guest need to this customer now that they've converted.
-    if (needId) {
-      await tx.need.update({ where: { id: needId }, data: { customerId: customer.id } });
-    }
-
     return b;
   });
 
@@ -88,43 +93,20 @@ export async function createBooking(formData: FormData) {
 }
 
 /**
- * Authenticated customer: the User row already exists (created by the auth
- * trigger at signup). Reuse their CustomerProfile, creating it on first booking.
+ * The signed-in customer's profile. The User row already exists (written by the
+ * auth trigger at signup) and createNeed creates the profile for anyone who came
+ * through the need funnel — so this only creates one for a client who booked an
+ * advisor directly without ever posting a need.
  */
 async function resolveAuthedCustomer(
-  userId: string,
-  email: string,
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>,
   industryId: string,
 ) {
-  const existing = await prisma.customerProfile.findUnique({ where: { userId } });
+  const existing = await prisma.customerProfile.findUnique({
+    where: { userId: user.id },
+  });
   if (existing) return existing;
   return prisma.customerProfile.create({
-    data: { userId, businessName: email.split("@")[0], industryId },
-  });
-}
-
-/**
- * Guest fallback (no account yet): resolve-or-create a lightweight customer from
- * an email. Used only when nobody is signed in — the guest-need -> booking path.
- */
-async function resolveCustomer(email: string, industryId: string) {
-  const existing = await prisma.user.findUnique({
-    where: { email },
-    include: { customerProfile: true },
-  });
-  if (existing?.customerProfile) return existing.customerProfile;
-
-  const user =
-    existing ??
-    (await prisma.user.create({
-      data: { id: randomUUID(), email, role: "CUSTOMER" },
-    }));
-
-  return prisma.customerProfile.create({
-    data: {
-      userId: user.id,
-      businessName: email.split("@")[0],
-      industryId,
-    },
+    data: { userId: user.id, businessName: displayName(user), industryId },
   });
 }

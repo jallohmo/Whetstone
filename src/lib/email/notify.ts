@@ -8,6 +8,7 @@ import { reportError } from "@/lib/observability";
 import { emailEnabled, sendEmail } from "./client";
 import {
   bookingConfirmedEmail,
+  matchesReadyEmail,
   newBookingEmail,
   newMessageEmail,
   payoutReleasedEmail,
@@ -100,6 +101,56 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     }
   } catch (err) {
     reportError("notifyBookingConfirmed", err, { bookingId });
+  }
+}
+
+/**
+ * Client "your matches are ready" — fired by sendShortlistToClient when ops
+ * RELEASES a shortlist (Need.status open -> matched), not when each individual
+ * MatchDecision is written. Ops shortlists several advisors one at a time, so
+ * firing per decision would send the same email two or three times.
+ *
+ * Always sent, like the booking receipt: it is the reply to something the client
+ * explicitly asked for, and it is their only prompt to come back. There is
+ * deliberately no preference key to switch it off.
+ */
+export async function notifyMatchesReady(needId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const need = await prisma.need.findUnique({
+      where: { id: needId },
+      select: {
+        problemArea: true,
+        industry: { select: { name: true } },
+        matchDecisions: { select: { advisorChosenId: true } },
+        customer: {
+          select: {
+            user: {
+              select: { email: true, firstName: true, lastName: true, fullName: true },
+            },
+          },
+        },
+      },
+    });
+    if (!need?.customer) return;
+
+    // Deduplicated the same way the shortlist screen counts them: one row per
+    // advisor, however many decisions mention them.
+    const advisorCount = new Set(need.matchDecisions.map((m) => m.advisorChosenId)).size;
+    if (advisorCount === 0) return;
+
+    await sendEmail({
+      to: need.customer.user.email,
+      ...matchesReadyEmail({
+        customerName: displayName(need.customer.user),
+        problemArea: need.problemArea,
+        industry: need.industry.name,
+        advisorCount,
+        url: `${appOrigin()}/needs/${needId}/matches`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyMatchesReady", err, { needId });
   }
 }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowRight, Clock } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { BookingStepper } from "@/components/ui/BookingStepper";
@@ -9,40 +9,59 @@ import { RelevanceExplainer } from "@/components/shared/RelevanceExplainer";
 import { ReviewSummary } from "@/components/shared/ReviewSummary";
 import { IndustryTag } from "@/components/shared/IndustryTag";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 // Screen 3 — Matched-advisor view (A3 outcome). A small CURATED shortlist chosen
-// by ops (via MatchDecision), not an infinite directory. Before ops has matched,
-// the customer sees an honest "we're finding you people" state.
+// by ops (via MatchDecision), not an infinite directory. Before ops has RELEASED
+// the shortlist, the customer sees an honest "we're finding you people" state.
+export const dynamic = "force-dynamic";
+
 export default async function MatchesPage({
   params,
 }: {
   params: { needId: string };
 }) {
+  const user = await getCurrentUser();
+  if (!user) redirect(`/signup?next=/needs/${params.needId}/matches`);
+
   const need = await prisma.need.findUnique({
     where: { id: params.needId },
     include: {
       industry: true,
+      customer: { select: { userId: true } },
       matchDecisions: { orderBy: { createdAt: "desc" } },
     },
   });
 
   if (!need) notFound();
 
+  // Ownership. A need id is a cuid, but it is not a secret — without this check
+  // anyone holding the URL could read someone else's shortlist. Ops can view any
+  // need so they can see exactly what the client will see before releasing it.
+  const isOps = user.role === "OPS_ADMIN";
+  if (!isOps && need.customer?.userId !== user.id) notFound();
+
+  // Ops assembles a shortlist across several MatchDecisions and RELEASES it in one
+  // go (Need.status open -> matched). Until then the client sees the waiting state
+  // rather than a half-built list that grows under them.
+  const released = need.status !== "open";
+
   // Advisors considered/chosen across all decisions for this need.
   const chosenIds = Array.from(
     new Set(need.matchDecisions.map((m) => m.advisorChosenId)),
   );
 
-  const advisors = chosenIds.length
-    ? await prisma.advisorProfile.findMany({
-        where: { id: { in: chosenIds }, deactivatedAt: null },
-        include: {
-          specialtyTags: true,
-          user: true,
-          bookings: { include: { review: true } },
-        },
-      })
-    : [];
+  const advisors =
+    (released || isOps) && chosenIds.length
+      ? await prisma.advisorProfile.findMany({
+          where: { id: { in: chosenIds }, deactivatedAt: null },
+          include: {
+            specialtyTags: true,
+            user: true,
+            bookings: { include: { review: true } },
+          },
+        })
+      : [];
 
   if (advisors.length === 0) {
     return (
@@ -78,6 +97,15 @@ export default async function MatchesPage({
         title="People who can help"
         subtitle="A short, curated shortlist — each matched to your situation by our team."
       />
+
+      {/* Ops previewing an unreleased shortlist: the client cannot see this yet. */}
+      {isOps && !released && (
+        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-body text-amber-900">
+          <span className="font-semibold">Ops preview.</span> This shortlist
+          hasn&apos;t been sent yet — the client still sees the waiting state. Release
+          it from the matching workbench.
+        </div>
+      )}
 
       <div className="mb-5 inline-flex items-center gap-2 rounded-pill bg-brand-blue-100 px-3.5 py-1.5 text-sm font-medium text-brand-blue-600">
         Matched to: <span className="font-semibold">{need.problemArea}</span> ·{" "}

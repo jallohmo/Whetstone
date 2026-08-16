@@ -95,8 +95,8 @@ export async function AuthValuePanel() {
       ) : (
         <div className="mt-6 rounded-lg bg-white p-4 shadow-card">
           <p className="text-body text-ink">
-            No account needed to see your matches — you only sign up when you decide
-            to book.
+            Free to join. Describe your problem and our team hand-picks the people
+            who&apos;ve solved it — you only pay when you book a session.
           </p>
         </div>
       )}

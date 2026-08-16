@@ -5,12 +5,21 @@ import { updateSession } from "@/lib/supabase/middleware";
  * One role check per route GROUP, not per screen (18 screens -> 3 checks):
  *   /advisor/*  -> ADVISOR
  *   /ops/*      -> OPS_ADMIN
- *   everything else (customer routes) -> public / CUSTOMER
+ *   customer-owned areas (below) -> any signed-in user
+ *   everything else -> public
  *
  * Auth-level gate only decides "can this role reach this route group". The
  * advisor "verified vs not-yet-verified" distinction is an APPLICATION-level
  * check against AdvisorProfile.verificationStatus, deliberately not here.
  */
+
+/**
+ * Routes where a customer's own data lives. Signup-first: a need belongs to an
+ * account from the moment it's created, so posting one requires a session.
+ * Public marketing ("/", "/advisors/:id") and the auth routes stay open.
+ */
+const CUSTOMER_PREFIXES = ["/needs", "/bookings", "/home", "/messages", "/account"];
+
 export async function middleware(request: NextRequest) {
   const { response, user, role, mfaRequired } = await updateSession(request);
   const { pathname } = request.nextUrl;
@@ -60,6 +69,22 @@ export async function middleware(request: NextRequest) {
 
   if (needsOps && role !== "OPS_ADMIN") {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Customer-owned areas. Anonymous visitors go to /signup rather than /login:
+  // the funnel now starts with creating an account, and the signup page links
+  // across to sign-in for people who already have one. The full path AND query
+  // are round-tripped through ?next= so "/bookings/new?advisorId=…" survives.
+  const needsCustomer = CUSTOMER_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  if (needsCustomer && !user) {
+    const target = `${pathname}${request.nextUrl.search}`;
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    url.search = "";
+    url.searchParams.set("next", target);
+    return NextResponse.redirect(url);
   }
 
   return response;
