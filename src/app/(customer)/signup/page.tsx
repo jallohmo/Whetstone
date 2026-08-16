@@ -23,7 +23,8 @@ export default async function SignupPage({
         <div className="p-8 sm:p-10">
           <h1 className="text-h1 text-ink">Create your account</h1>
           <p className="mt-2 text-body text-gray-500">
-            Book verified, insured advisory sessions. It&apos;s free to join.
+            Free to join. Create an account to describe your business challenge and
+            get a hand-picked shortlist of verified, insured advisors.
           </p>
 
           <div className="mt-6">
@@ -32,7 +33,14 @@ export default async function SignupPage({
 
           <p className="mt-6 text-sm text-gray-500">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-brand-blue hover:underline">
+            <Link
+              href={
+                searchParams.next
+                  ? `/login?next=${encodeURIComponent(searchParams.next)}`
+                  : "/login"
+              }
+              className="font-semibold text-brand-blue hover:underline"
+            >
               Sign in
             </Link>
           </p>

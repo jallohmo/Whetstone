@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 // Screen 16 — Manual matching tool (A3). Candidates are VERIFIED advisors,
 // surfaced with their specialties so ops can judge relevance across sectors.
+// Live: the shortlist grows one decision at a time, so this must not be cached.
+export const dynamic = "force-dynamic";
+
 export default async function OpsMatchPage({
   params,
 }: {
@@ -11,7 +14,10 @@ export default async function OpsMatchPage({
 }) {
   const need = await prisma.need.findUnique({
     where: { id: params.needId },
-    include: { industry: true },
+    include: {
+      industry: true,
+      matchDecisions: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!need) notFound();
 
@@ -46,6 +52,18 @@ export default async function OpsMatchPage({
     }),
   );
 
+  // Advisors already shortlisted for this need, deduplicated the same way the
+  // client's screen counts them. Names come from the candidate list where
+  // possible; a shortlisted advisor who has since been unverified falls back to
+  // their id so ops still sees that the row exists.
+  const nameById = new Map(candidates.map((c) => [c.id, c.name]));
+  const shortlist = Array.from(
+    new Set(need.matchDecisions.map((m) => m.advisorChosenId)),
+  ).map((advisorId) => ({
+    advisorId,
+    name: nameById.get(advisorId) ?? advisorId.slice(0, 8),
+  }));
+
   return (
     <div>
       <h1 className="mb-1 text-lg font-bold text-ink">Match need</h1>
@@ -53,7 +71,12 @@ export default async function OpsMatchPage({
         {need.problemArea} · {need.industry.name} · need{" "}
         <span className="font-mono">{need.id}</span>
       </p>
-      <MatchingWorkbench needId={need.id} candidates={candidates} />
+      <MatchingWorkbench
+        needId={need.id}
+        candidates={candidates}
+        shortlist={shortlist}
+        released={need.status !== "open"}
+      />
     </div>
   );
 }

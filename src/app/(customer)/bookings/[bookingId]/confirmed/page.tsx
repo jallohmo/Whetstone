@@ -48,7 +48,7 @@ export default async function BookingConfirmedPage({
         </span>
         <h1 className="mt-4 text-h1 text-ink">You&apos;re booked in</h1>
         <p className="mx-auto mt-2 max-w-md text-body text-gray-600">
-          Come with your actual problem — that&apos;s what this is for. You&apos;ll get a
+          Come with your actual business challenge — that&apos;s what this is for. You&apos;ll get a
           reminder and a video link before the session.
         </p>
       </div>

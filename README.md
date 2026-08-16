@@ -124,11 +124,17 @@ Real **Supabase Auth** (email + password) is wired:
   it into `public.users.role`. `OPS_ADMIN` is never self-serve — create it with
   `scripts/create-ops-admin.ts` (service role).
 - `/login`, sign-out, and `/auth/callback` (email-confirmation code exchange) are
-  wired; middleware gates the three route groups by role.
+  wired; middleware gates the advisor and ops route groups by role, and the
+  customer-owned areas (`/needs`, `/bookings`, `/home`, `/messages`, `/account`)
+  by session. Public marketing (`/`, `/advisors/:id`) stays open.
 - `getCurrentUser()` (`src/lib/auth.ts`) is the server-side session/role source of
-  truth (reads `public.users`, not client metadata). The booking flow uses the
-  authenticated customer when signed in, and still supports the guest-need →
-  account-at-booking fallback.
+  truth (reads `public.users`, not client metadata).
+- **Signup-first**: posting a need requires an account, so a `Need` is owned by a
+  `CustomerProfile` from creation. An anonymous visitor who clicks "Describe your
+  business challenge" is sent to `/signup?next=/needs/new` and lands back on the form. This
+  is what lets the client home list their needs and lets ops email them when the
+  shortlist is released — and it satisfies the `needs` RLS policy, which scopes
+  rows by `customer_id → auth.uid()` and could never match an ownerless row.
 
 Auth dashboard config (redirect URLs, email confirmation, SMTP, first ops admin)
 is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §5**.

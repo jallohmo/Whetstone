@@ -12,6 +12,20 @@ export interface AuthFormState {
   error?: string;
 }
 
+/**
+ * Sanitise a post-auth "?next=" destination. Only same-site absolute paths are
+ * accepted — anything else (an absolute URL, a protocol-relative "//evil.com",
+ * a backslash variant some parsers normalise to "/") falls back to null so the
+ * caller uses the role's home. `next` reaches these actions from a query string,
+ * so without this it is an open redirect.
+ */
+function safeNext(raw: unknown): string | null {
+  const value = String(raw ?? "").trim();
+  if (!value.startsWith("/")) return null;
+  if (value.startsWith("//") || value.startsWith("/\\")) return null;
+  return value;
+}
+
 /** Origin for building the email-confirmation callback URL. */
 function siteOrigin(): string {
   const h = headers();
@@ -30,7 +44,7 @@ export async function signIn(
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "");
+  const next = safeNext(formData.get("next"));
 
   const supabase = createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -56,6 +70,10 @@ export async function signUp(
   const password = String(formData.get("password") ?? "");
   const requestedRole = String(formData.get("role") ?? "CUSTOMER");
   const role: UserRole = requestedRole === "ADVISOR" ? "ADVISOR" : "CUSTOMER";
+  // Signup-first funnel: someone who clicked "Describe your business challenge" arrives via
+  // /signup?next=/needs/new and must land back there, not on the generic home.
+  const next = safeNext(formData.get("next"));
+  const destination = next || roleHome(role);
 
   if (password.length < 8) {
     return { error: "Use a password of at least 8 characters." };
@@ -67,16 +85,20 @@ export async function signUp(
     password,
     options: {
       data: { role },
-      emailRedirectTo: `${siteOrigin()}/auth/callback?next=${encodeURIComponent(roleHome(role))}`,
+      emailRedirectTo: `${siteOrigin()}/auth/callback?next=${encodeURIComponent(destination)}`,
     },
   });
   if (error) return { error: error.message };
 
-  // If the project requires email confirmation, there's no session yet.
+  // If the project requires email confirmation, there's no session yet. Carry the
+  // destination through so the intent survives the round trip via email.
   if (!data.session) {
-    redirect("/login?checkEmail=1");
+    const checkEmail = next
+      ? `/login?checkEmail=1&next=${encodeURIComponent(next)}`
+      : "/login?checkEmail=1";
+    redirect(checkEmail);
   }
-  redirect(roleHome(role));
+  redirect(destination);
 }
 
 export interface ResetRequestState {

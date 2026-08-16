@@ -149,11 +149,12 @@ model CustomerProfile {
 
 model Need {
   id             String           @id @default(cuid())
-  // Nullable to support the "guest need" state (A2): a need can be posted before
-  // a full account exists, then attached to a CustomerProfile at booking time.
-  customerId     String?          @map("customer_id")
-  customer       CustomerProfile? @relation(fields: [customerId], references: [id])
-  guestEmail     String?          @map("guest_email")
+  // Signup-first (A2): a need is owned by a CustomerProfile from creation. This
+  // was nullable to support a "guest need" posted before an account existed; that
+  // flow is gone, and the RLS policy on needs (0002) already scopes rows by
+  // customer_id -> auth.uid(), which an ownerless row could never satisfy.
+  customerId     String           @map("customer_id")
+  customer       CustomerProfile  @relation(fields: [customerId], references: [id])
   industryId     String           @map("industry_id")
   industry       IndustryTaxonomy @relation(fields: [industryId], references: [id])
   problemArea    String           @map("problem_area")

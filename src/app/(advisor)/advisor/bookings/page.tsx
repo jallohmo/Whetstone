@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // Screen 13 — Advisor booking inbox. Each row surfaces the customer's stated
-// problem + industry UP FRONT (from their latest need) so the advisor can prepare,
+// challenge + industry UP FRONT (from their latest need) so the advisor can prepare,
 // plus the session time.
 export const dynamic = "force-dynamic";
 

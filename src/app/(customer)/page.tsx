@@ -8,7 +8,7 @@ import { getLandingData } from "@/lib/featured";
 import { getCurrentUser } from "@/lib/auth";
 
 // Screen 1 — Landing/homepage.
-// Plain-spoken, "describe your problem" entry point. Weathered and credible,
+// Plain-spoken, "describe your business challenge" entry point. Weathered and credible,
 // not wellness-soft and not consulting-slick. The hero's "top match" preview and
 // social proof are driven by REAL platform data (see lib/featured), with honest
 // fallbacks before there's data to show.
@@ -44,7 +44,7 @@ export default async function LandingPage() {
               href="/needs/new"
               className="inline-flex items-center gap-2 rounded-md bg-ink px-6 py-3.5 text-body-lg font-semibold text-white shadow-ink-glow-lg transition duration-DEFAULT ease-soft hover:-translate-y-px"
             >
-              Describe your problem
+              Describe your business challenge
             </Link>
             <a
               href="#how-it-works"
@@ -153,7 +153,7 @@ export default async function LandingPage() {
             // No verified advisors yet — a genuine invitation, not a fake person.
             <div className="relative rounded-xl bg-white p-6 shadow-float">
               <Eyebrow>How matching works</Eyebrow>
-              <p className="mt-4 text-h3 text-ink">Tell us the problem. We find the person.</p>
+              <p className="mt-4 text-h3 text-ink">Tell us the challenge. We find the person.</p>
               <p className="mt-2 text-body text-gray-600">
                 Describe what you&apos;re dealing with and our team hand-picks verified
                 experts who&apos;ve solved exactly it — no directory to trawl, no
@@ -163,7 +163,7 @@ export default async function LandingPage() {
                 href="/needs/new"
                 className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
               >
-                Describe your problem
+                Describe your business challenge
                 <ArrowRight size={15} strokeWidth={2} />
               </Link>
             </div>
@@ -221,7 +221,7 @@ export default async function LandingPage() {
             href="/needs/new"
             className="inline-flex shrink-0 items-center gap-2 rounded-md border border-white/25 px-5 py-3 text-body font-semibold text-white transition duration-DEFAULT ease-soft hover:bg-white/10"
           >
-            Describe your problem
+            Describe your business challenge
             <ArrowRight size={16} strokeWidth={2} />
           </Link>
         </div>
@@ -229,13 +229,13 @@ export default async function LandingPage() {
           {[
             {
               n: "01",
-              title: "Describe your problem",
-              body: "Plain language, no account needed. Tell us the industry and what's actually going on.",
+              title: "Describe your business challenge",
+              body: "Create a free account, then tell us the industry and what's actually going on. Plain language.",
             },
             {
               n: "02",
               title: "Meet your matches",
-              body: "We hand-pick a short list of verified experts who've dealt with exactly this.",
+              body: "We hand-pick a short list of verified experts who've dealt with exactly this, and email you when it's ready.",
             },
             {
               n: "03",

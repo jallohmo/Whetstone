@@ -48,7 +48,14 @@ export default async function LoginPage({
 
           <p className="mt-6 text-sm text-gray-500">
             New here?{" "}
-            <Link href="/signup" className="font-semibold text-brand-blue hover:underline">
+            <Link
+              href={
+                searchParams.next
+                  ? `/signup?next=${encodeURIComponent(searchParams.next)}`
+                  : "/signup"
+              }
+              className="font-semibold text-brand-blue hover:underline"
+            >
               Create an account
             </Link>
           </p>

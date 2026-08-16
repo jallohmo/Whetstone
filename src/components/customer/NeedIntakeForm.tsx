@@ -30,18 +30,36 @@ function SelectShell({ children }: { children: React.ReactNode }) {
 
 /**
  * Screen 2 / NeedIntakeForm (A2). Structured taxonomy selector (industry ->
- * sub-specialty), problem area, description. Feels like "ask a question", not
- * "fill out an application". No account required — the need is a guest need until
- * booking. Options come from IndustryTaxonomy (never hardcoded); submits to the
- * createNeed server action, which creates the Need and routes to the matches view.
+ * sub-specialty), challenge, description. Feels like "ask a question", not
+ * "fill out an application". Reached only by a signed-in client (middleware gates
+ * /needs/*), so the need is owned from creation. Options come from
+ * IndustryTaxonomy (never hardcoded); submits to the createNeed server action,
+ * which creates the Need and routes to the matches view.
+ *
+ * `defaultBusinessName` is the client's existing profile name when they have one,
+ * so returning clients see it prefilled rather than being asked again.
  */
-export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] }) {
+export function NeedIntakeForm({
+  industries,
+  defaultBusinessName,
+}: {
+  industries: TaxonomyOption[];
+  defaultBusinessName?: string | null;
+}) {
   const [industryId, setIndustryId] = useState("");
   const subSpecialties =
     industries.find((i) => i.id === industryId)?.children ?? [];
 
   return (
     <form action={createNeed}>
+      <Field label="What's your business called?" hint="So your advisor knows who they're helping.">
+        <Input
+          name="businessName"
+          placeholder="Your business name"
+          defaultValue={defaultBusinessName ?? ""}
+        />
+      </Field>
+
       <Field label="What kind of business do you run?" hint="Pick the closest industry — you can refine below.">
         <SelectShell>
           <select
@@ -76,7 +94,7 @@ export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] })
         </Field>
       )}
 
-      <Field label="What's the problem area?" hint="e.g. pricing, cash flow, compliance, a bottleneck, a transition.">
+      <Field label="What's the challenge?" hint="e.g. pricing, cash flow, compliance, a bottleneck, a transition.">
         <Input name="problemArea" placeholder="In a few words…" required />
       </Field>
 
@@ -87,7 +105,8 @@ export function NeedIntakeForm({ industries }: { industries: TaxonomyOption[] })
       <div className="mt-2 flex flex-wrap items-center gap-4">
         <SubmitButton />
         <p className="text-sm text-gray-500">
-          No account needed yet — you only sign up when you decide to book.
+          Our team reads every one of these by hand — we&apos;ll email you the moment
+          your shortlist is ready.
         </p>
       </div>
     </form>

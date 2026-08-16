@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   CalendarClock,
+  Clock,
   Mail,
   MessageSquare,
   Plus,
@@ -64,16 +65,18 @@ export default async function ClientHomePage() {
   let past: Awaited<ReturnType<typeof loadPast>> = [];
   let pendingReview: Awaited<ReturnType<typeof loadPendingReview>> = null;
   let threads: Awaited<ReturnType<typeof loadThreads>> = [];
+  let needs: Awaited<ReturnType<typeof loadNeeds>> = [];
   let advisorsWorkedWith = 0;
   let ytd: { amountCents: number; currency: string }[] = [];
 
   if (profile) {
     const cid = profile.id;
-    [upcoming, past, pendingReview, threads, advisorsWorkedWith, ytd] = await Promise.all([
+    [upcoming, past, pendingReview, threads, needs, advisorsWorkedWith, ytd] = await Promise.all([
       loadUpcoming(cid, now),
       loadPast(cid, now),
       loadPendingReview(cid),
       loadThreads(cid),
+      loadNeeds(cid),
       prisma.booking
         .findMany({ where: { customerId: cid }, select: { advisorId: true }, distinct: ["advisorId"] })
         .then((r) => r.length),
@@ -93,8 +96,13 @@ export default async function ClientHomePage() {
   const ytdMinor = ytd.filter((p) => p.currency === ytdCurrency).reduce((s, p) => s + p.amountCents, 0);
   const ytdSessions = past.length + upcoming.length;
 
+  const matchesReady = needs.filter((n) => n.released && n.advisorCount > 0).length;
+
   const subParts: string[] = [];
   subParts.push(`${upcoming.length} ${upcoming.length === 1 ? "session" : "sessions"} coming up`);
+  if (matchesReady) {
+    subParts.push(`${matchesReady} ${matchesReady === 1 ? "shortlist" : "shortlists"} to look at`);
+  }
   if (reviewsToLeave) subParts.push(`${reviewsToLeave} review to leave`);
 
   return (
@@ -114,7 +122,7 @@ export default async function ClientHomePage() {
           href="/needs/new"
           className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
         >
-          <Plus size={16} strokeWidth={2} /> Describe a new problem
+          <Plus size={16} strokeWidth={2} /> Describe a new challenge
         </Link>
       </div>
 
@@ -144,6 +152,43 @@ export default async function ClientHomePage() {
       <div className="grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
         {/* Left column */}
         <div className="flex flex-col gap-5">
+          {/* Your business challenges — the way back to a shortlist. */}
+          {needs.length > 0 && (
+            <DashCard
+              title="Your business challenges"
+              action={{ label: "Describe another", href: "/needs/new" }}
+            >
+              <div className="flex flex-col divide-y divide-dashed divide-gray-200">
+                {needs.map((n) => {
+                  const ready = n.released && n.advisorCount > 0;
+                  return (
+                    <div key={n.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-body font-semibold text-ink">{n.problemArea}</p>
+                        <p className="truncate text-sm text-gray-500">
+                          {n.industry} · {shortDate.format(n.createdAt)}
+                        </p>
+                      </div>
+                      {ready ? (
+                        <Link
+                          href={`/needs/${n.id}/matches`}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
+                        >
+                          {n.advisorCount} {n.advisorCount === 1 ? "match" : "matches"}
+                          <ArrowRight size={14} strokeWidth={2} />
+                        </Link>
+                      ) : (
+                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600">
+                          <Clock size={14} strokeWidth={2} /> Finding people
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </DashCard>
+          )}
+
           {/* Featured next session */}
           {next ? (
             <div
@@ -194,7 +239,7 @@ export default async function ClientHomePage() {
                 href="/needs/new"
                 className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
               >
-                Describe your problem <ArrowRight size={15} strokeWidth={2} />
+                Describe your business challenge <ArrowRight size={15} strokeWidth={2} />
               </Link>
             </Card>
           )}
@@ -414,6 +459,37 @@ async function loadPendingReview(customerId: string) {
     topic: b.scopeDescription,
     advisorName: displayName(b.advisor.user),
   };
+}
+
+/**
+ * The client's posted business challenges and where each one has got to. Without this the
+ * shortlist URL is effectively unlisted — the "matches are ready" email would be
+ * the only way back to it, which is the fragility the guest flow had.
+ */
+async function loadNeeds(customerId: string) {
+  const rows = await prisma.need.findMany({
+    where: { customerId, status: { not: "closed" } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      problemArea: true,
+      status: true,
+      createdAt: true,
+      industry: { select: { name: true } },
+      matchDecisions: { select: { advisorChosenId: true } },
+    },
+  });
+  return rows.map((n) => ({
+    id: n.id,
+    problemArea: n.problemArea,
+    industry: n.industry.name,
+    createdAt: n.createdAt,
+    // Ops assembles the shortlist while the need is still "open"; only a released
+    // one is shown as ready, so this never promises matches the client can't open.
+    released: n.status !== "open",
+    advisorCount: new Set(n.matchDecisions.map((m) => m.advisorChosenId)).size,
+  }));
 }
 
 async function loadThreads(customerId: string) {

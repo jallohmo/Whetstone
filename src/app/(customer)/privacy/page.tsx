@@ -21,7 +21,7 @@ export default function PrivacyPage() {
           heading: "Information we collect",
           body: [
             "Account details: your email and role, created when you sign up. Authentication is handled by our identity provider; we never store your password.",
-            "Profile and needs: for clients, the industry and problem details you describe; for advisors, your background, specialties, years of experience, and the credential documents you upload for verification.",
+            "Profile and needs: for clients, the industry and business challenge details you describe; for advisors, your background, specialties, years of experience, and the credential documents you upload for verification.",
             "Booking and payment records: sessions, messages exchanged on the platform, and payment status. Card details are handled by our payment processor, not stored by us.",
           ],
         },
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         {
           heading: "Sharing",
           body: [
-            "The two parties to a booking see what they need to work together (for example, a client sees a matched advisor’s profile; an advisor sees the client’s stated problem).",
+            "The two parties to a booking see what they need to work together (for example, a client sees a matched advisor’s profile; an advisor sees the client’s stated business challenge).",
             "We share data with processors that run the platform — our hosting, database, authentication, payment, and video providers — under agreements that restrict their use of it. We do not sell your personal information.",
           ],
         },

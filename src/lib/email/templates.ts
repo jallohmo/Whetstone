@@ -254,6 +254,43 @@ export function sessionReminderEmail(p: {
   };
 }
 
+/**
+ * To the client: ops has released the shortlist for a need they posted (a
+ * transactional reply to something they asked for — always sent, like the booking
+ * receipt). This is the ONLY prompt to come back, so the CTA goes straight to the
+ * shortlist rather than the dashboard.
+ */
+export function matchesReadyEmail(p: {
+  customerName: string;
+  problemArea: string;
+  industry: string;
+  advisorCount: number;
+  url: string;
+}): EmailContent {
+  const people = p.advisorCount === 1 ? "one person" : `${p.advisorCount} people`;
+  const noun = p.advisorCount === 1 ? "match" : "matches";
+  return {
+    subject: `Your Whetstone ${noun} ${p.advisorCount === 1 ? "is" : "are"} ready`,
+    html: layout({
+      preview: `We found ${people} who've dealt with ${p.problemArea}.`,
+      eyebrow: "Matches ready",
+      heading: `We found ${people}, ${p.customerName}`,
+      body:
+        para(
+          `Our team went through your business challenge by hand and picked ${people} who've actually dealt with it. Every one is identity-checked, reference-verified and insured.`,
+        ) +
+        infoPanel([
+          { label: "Challenge", value: p.problemArea },
+          { label: "Industry", value: p.industry },
+          { label: "Shortlist", value: `${p.advisorCount} verified ${p.advisorCount === 1 ? "advisor" : "advisors"}` },
+        ]),
+      cta: { label: `View your ${noun}`, url: p.url },
+      note: "Sessions have a fixed scope and price, and payment is held until you've met.",
+      footerReason: "You're receiving this because you posted a business challenge on Whetstone.",
+    }),
+  };
+}
+
 /** To the advisor: held earnings were released (gated on "payoutConfirmations"). */
 export function payoutReleasedEmail(p: {
   advisorName: string;

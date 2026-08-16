@@ -6,9 +6,15 @@ export const dynamic = "force-dynamic";
 
 // Ops: open needs list (entry to the matching workbench, Screen 16).
 export default async function OpsNeedsPage() {
+  // "open" covers both untouched needs and ones with a shortlist part-built:
+  // a need only leaves this queue when ops RELEASES it to the client, so the
+  // shortlist count below is what tells the two apart.
   const needs = await prisma.need.findMany({
     where: { status: "open" },
-    include: { industry: true },
+    include: {
+      industry: true,
+      matchDecisions: { select: { advisorChosenId: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -26,25 +32,40 @@ export default async function OpsNeedsPage() {
               <tr>
                 <th className="px-3 py-2 font-semibold">Need</th>
                 <th className="px-3 py-2 font-semibold">Industry</th>
+                <th className="px-3 py-2 font-semibold">Shortlist</th>
                 <th className="px-3 py-2 font-semibold">Posted</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
-              {needs.map((n) => (
-                <tr key={n.id} className="border-b border-gray-150 hover:bg-gray-50">
-                  <td className="px-3 py-2 font-medium text-ink">{n.problemArea}</td>
-                  <td className="px-3 py-2 text-gray-500">{n.industry.name}</td>
-                  <td className="px-3 py-2 font-mono text-gray-500">
-                    {n.createdAt.toISOString().slice(0, 10)}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <Link href={`/ops/needs/${n.id}/match`} className="font-semibold text-brand-blue hover:underline">
-                      Match →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {needs.map((n) => {
+                const shortlisted = new Set(
+                  n.matchDecisions.map((m) => m.advisorChosenId),
+                ).size;
+                return (
+                  <tr key={n.id} className="border-b border-gray-150 hover:bg-gray-50">
+                    <td className="px-3 py-2 font-medium text-ink">{n.problemArea}</td>
+                    <td className="px-3 py-2 text-gray-500">{n.industry.name}</td>
+                    <td className="px-3 py-2">
+                      {shortlisted === 0 ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <span className="font-semibold text-amber-700">
+                          {shortlisted} ready to send
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-gray-500">
+                      {n.createdAt.toISOString().slice(0, 10)}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Link href={`/ops/needs/${n.id}/match`} className="font-semibold text-brand-blue hover:underline">
+                        Match →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
