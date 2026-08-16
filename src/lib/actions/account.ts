@@ -251,11 +251,19 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     }
   }
 
-  // Clean account: detach guest needs (preserve ops match records), drop the
-  // profile and the mirror row.
+  // Clean account: remove their needs and the match decisions attached to them,
+  // then the profile and the mirror row.
+  //
+  // Needs used to be DETACHED here (customer_id set to null) to keep the ops match
+  // log. That is no longer possible now a need is owned by definition, and it was
+  // the wrong default anyway: a need holds the client's free-text description of
+  // their business problems, so it should not outlive the account that posted it.
+  // Only accounts with zero bookings reach this point — anything with real history
+  // is refused above and handled by support.
   await prisma.$transaction(async (tx) => {
     if (profile) {
-      await tx.need.updateMany({ where: { customerId: profile.id }, data: { customerId: null } });
+      await tx.matchDecision.deleteMany({ where: { need: { customerId: profile.id } } });
+      await tx.need.deleteMany({ where: { customerId: profile.id } });
       await tx.customerProfile.delete({ where: { id: profile.id } });
     }
     await tx.user.delete({ where: { id: user.id } });
