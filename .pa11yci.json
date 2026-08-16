@@ -9,11 +9,9 @@
     "http://localhost:3000/",
     "http://localhost:3000/login",
     "http://localhost:3000/signup",
-    "http://localhost:3000/home",
-    "http://localhost:3000/needs/new",
-    "http://localhost:3000/advisors",
-    "http://localhost:3000/bookings",
-    "http://localhost:3000/account"
+    "http://localhost:3000/advisor/apply",
+    "http://localhost:3000/terms",
+    "http://localhost:3000/privacy"
   ],
   "standard": "WCAG2AA",
   "threshold": 5
