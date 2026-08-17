@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
+import { PAID_BOOKING_STATUSES } from "@/lib/booking-status";
 import type { AvatarGradient } from "@/components/ui/Avatar";
 
 /**
@@ -60,7 +61,7 @@ export async function getLandingData(): Promise<LandingData> {
       }),
       prisma.package.findFirst({ where: { active: true }, orderBy: { priceCents: "asc" } }),
       prisma.booking.count({
-        where: { status: { in: ["confirmed", "in_progress", "completed"] } },
+        where: { status: { in: [...PAID_BOOKING_STATUSES] } },
       }),
     ]);
 

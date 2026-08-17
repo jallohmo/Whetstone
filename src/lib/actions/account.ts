@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { LIVE_BOOKING_STATUSES } from "@/lib/booking-status";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { keysForRole } from "@/lib/notifications";
@@ -203,7 +204,9 @@ export async function deactivateAdvisor(): Promise<AccountFormState> {
   if (!profile) return { error: "No advisor profile found." };
 
   const active = await prisma.booking.count({
-    where: { advisorId: profile.id, status: { in: ["pending_payment", "confirmed", "in_progress"] } },
+    // awaiting_confirmation counts as active on purpose — the advisor's payout is
+    // still held pending the client's acceptance, so they can't walk away yet.
+    where: { advisorId: profile.id, status: { in: ["pending_payment", ...LIVE_BOOKING_STATUSES] } },
   });
   if (active > 0) {
     return { error: `You have ${active} active booking${active === 1 ? "" : "s"} to complete or cancel first.` };

@@ -3,6 +3,7 @@ import { Flag, Video } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { MessageComposer } from "@/components/booking/MessageComposer";
+import { CompletionPanel } from "@/components/booking/CompletionPanel";
 import { startVideoCall } from "@/lib/actions/video";
 import { raiseDispute } from "@/lib/actions/disputes";
 import { getCurrentUser } from "@/lib/auth";
@@ -31,13 +32,13 @@ export default async function MessagesPage({
   );
   if (!booking) redirect("/");
 
-  const [messages, nextSession, parties] = await Promise.all([
+  const [messages, allSessions, parties] = await Promise.all([
     prisma.message.findMany({
       where: { bookingId: params.bookingId },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.session.findFirst({
-      where: { bookingId: params.bookingId, status: "scheduled" },
+    prisma.session.findMany({
+      where: { bookingId: params.bookingId },
       orderBy: { scheduledAt: "asc" },
     }),
     prisma.booking.findUnique({
@@ -51,6 +52,10 @@ export default async function MessagesPage({
 
   const isParty = booking.customer.userId === user.id || booking.advisor.userId === user.id;
   const viewerIsAdvisor = booking.advisor.userId === user.id;
+  // "Join video" is for the next session that hasn't happened yet; once the
+  // advisor records an outcome the session drops out of this and the completion
+  // panel takes over.
+  const nextSession = allSessions.find((s) => s.status === "scheduled") ?? null;
   const counterpartEmail = viewerIsAdvisor
     ? parties?.customer.user.email
     : parties?.advisor.user.email;
@@ -69,6 +74,16 @@ export default async function MessagesPage({
         <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
           Thanks — our team has your report and will be in touch. The booking is on hold.
         </div>
+      )}
+
+      {isParty && (
+        <CompletionPanel
+          bookingId={params.bookingId}
+          bookingStatus={booking.status}
+          sessionCount={booking.sessionCount}
+          sessions={allSessions.map((s) => ({ id: s.id, scheduledAt: s.scheduledAt, status: s.status }))}
+          viewerIsAdvisor={viewerIsAdvisor}
+        />
       )}
 
       {nextSession && isParty && (

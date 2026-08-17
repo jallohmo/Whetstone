@@ -19,6 +19,7 @@ import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildEarningsSummary, greeting, firstNameOf } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
+import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 
 // Screen 9d — Advisor home. The signed-in landing for advisors: a read-mostly
 // summary that deep-links into the detail screens (13 bookings, 14 earnings, 12
@@ -59,7 +60,7 @@ export default async function AdvisorHomePage() {
       prisma.session.findMany({
         where: {
           scheduledAt: { gte: now },
-          booking: { advisorId: profile.id, status: { in: ["confirmed", "in_progress"] } },
+          booking: { advisorId: profile.id, status: { in: [...IN_DELIVERY_BOOKING_STATUSES] } },
         },
         orderBy: { scheduledAt: "asc" },
         take: 5,

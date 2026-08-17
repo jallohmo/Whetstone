@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronRight, MessageSquare } from "lucide-react";
+import { CheckCircle2, ChevronRight, MessageSquare } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cn } from "@/lib/cn";
+import { CUSTOMER_STATUS_LABEL } from "@/lib/booking-status";
 
 // Client bookings list — the "Bookings" nav destination and the "View all"
 // target from the home dashboard. Read-only; each row opens the booking thread.
@@ -13,15 +15,6 @@ export const dynamic = "force-dynamic";
 const dateTime = new Intl.DateTimeFormat("en-AU", {
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
-
-const STATUS_LABEL: Record<string, string> = {
-  pending_payment: "Awaiting payment",
-  confirmed: "Confirmed",
-  in_progress: "In progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  disputed: "Disputed",
-};
 
 export default async function ClientBookingsPage() {
   const user = await getCurrentUser();
@@ -67,8 +60,14 @@ export default async function ClientBookingsPage() {
           {bookings.map((b) => {
             const advisorName = displayName(b.advisor.user);
             const when = b.sessions[0]?.scheduledAt;
+            // A booking waiting on this client is the one row that shouldn't open
+            // the thread — send them straight to the thing they need to do.
+            const needsConfirmation = b.status === "awaiting_confirmation";
             return (
-              <Link key={b.id} href={`/bookings/${b.id}/messages`}>
+              <Link
+                key={b.id}
+                href={needsConfirmation ? `/bookings/${b.id}/confirm-completion` : `/bookings/${b.id}/messages`}
+              >
                 <Card className="transition hover:-translate-y-px hover:shadow-float">
                   <div className="flex items-center gap-3">
                     <Avatar name={advisorName} src={b.advisor.avatarUrl ?? b.advisor.user.avatarUrl} size={44} />
@@ -78,14 +77,29 @@ export default async function ClientBookingsPage() {
                         {when ? dateTime.format(when) : "Time to be scheduled"}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-pill bg-gray-100 px-2.5 py-1 text-2xs font-semibold text-gray-600">
-                      {STATUS_LABEL[b.status] ?? b.status}
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-pill px-2.5 py-1 text-2xs font-semibold",
+                        needsConfirmation
+                          ? "bg-brand-blue text-white"
+                          : "bg-gray-100 text-gray-600",
+                      )}
+                    >
+                      {CUSTOMER_STATUS_LABEL[b.status] ?? b.status}
                     </span>
                   </div>
                   <p className="mt-3 text-body text-gray-600 line-clamp-2">{b.scopeDescription}</p>
                   <div className="mt-4 flex items-center justify-between border-t border-dashed border-gray-300 pt-4">
                     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue">
-                      <MessageSquare size={15} strokeWidth={2} /> Messages &amp; video
+                      {needsConfirmation ? (
+                        <>
+                          <CheckCircle2 size={15} strokeWidth={2} /> Review and confirm
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare size={15} strokeWidth={2} /> Messages &amp; video
+                        </>
+                      )}
                     </span>
                     <ChevronRight size={16} className="text-gray-400" />
                   </div>

@@ -11,8 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function ReviewPage({
   params,
+  searchParams,
 }: {
   params: { bookingId: string };
+  searchParams: { accepted?: string; thanks?: string };
 }) {
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/bookings/${params.bookingId}/review`);
@@ -23,6 +25,15 @@ export default async function ReviewPage({
   });
   if (!booking) redirect("/");
   if (booking.customer.userId !== user.id) redirect("/");
+
+  // Feedback is for finished work only. A booking still waiting on this client's
+  // acceptance goes to the confirm screen instead — that's the step that matters.
+  if (booking.status === "awaiting_confirmation") {
+    redirect(`/bookings/${params.bookingId}/confirm-completion`);
+  }
+  if (booking.status !== "completed") {
+    redirect(`/bookings/${params.bookingId}/messages`);
+  }
 
   // Already reviewed -> thank-you, no double submit.
   if (booking.review) {
@@ -44,6 +55,15 @@ export default async function ReviewPage({
 
   return (
     <div className="mx-auto max-w-lg">
+      {searchParams.accepted && (
+        <div className="mb-page-gap flex items-start gap-2 rounded-lg border border-green-500/40 bg-green-100 p-4 text-sm text-green-700">
+          <CheckCircle2 size={18} strokeWidth={2} className="mt-px shrink-0" />
+          <span>
+            Confirmed — the payment has been released to your advisor. Nothing else is needed from
+            you; the feedback below is optional.
+          </span>
+        </div>
+      )}
       <PageHeader title="How did it go?" subtitle="Takes 20 seconds. It helps the next person get matched to the right advisor." />
       <Card>
         <PostSessionSurvey bookingId={params.bookingId} />

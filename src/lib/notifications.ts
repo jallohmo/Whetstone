@@ -15,6 +15,7 @@ export interface NotificationKey {
 export const NOTIFICATION_KEYS: Record<"CUSTOMER" | "ADVISOR", NotificationKey[]> = {
   CUSTOMER: [
     { key: "sessionReminders", label: "Session reminders", description: "A nudge before each booked session.", default: true },
+    { key: "bookingUpdates", label: "Booking updates", description: "When an advisor marks work complete and needs your confirmation.", default: true },
     { key: "newMessages", label: "New messages", description: "When an advisor replies in your thread.", default: true },
     { key: "productUpdates", label: "Product updates", description: "Occasional news about Whetstone.", default: false },
   ],

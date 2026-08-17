@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { IndustryTag } from "@/components/shared/IndustryTag";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ADVISOR_STATUS_LABEL, LIVE_BOOKING_STATUSES } from "@/lib/booking-status";
 
 // Screen 13 — Advisor booking inbox. Each row surfaces the customer's stated
 // challenge + industry UP FRONT (from their latest need) so the advisor can prepare,
@@ -27,7 +28,10 @@ export default async function AdvisorBookingsPage() {
   if (!profile) redirect("/advisor/apply");
 
   const bookings = await prisma.booking.findMany({
-    where: { advisorId: profile.id, status: { in: ["confirmed", "in_progress", "pending_payment"] } },
+    where: {
+      advisorId: profile.id,
+      status: { in: ["pending_payment", ...LIVE_BOOKING_STATUSES] },
+    },
     orderBy: { createdAt: "desc" },
     include: {
       sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
@@ -58,7 +62,14 @@ export default async function AdvisorBookingsPage() {
                   <span className="ws-mono text-sm text-gray-500">
                     {when ? fmt.format(when) : "Time to be scheduled"}
                   </span>
-                  {need && <span className="ml-auto"><IndustryTag name={need.industry.name} /></span>}
+                  <span className="ml-auto flex items-center gap-2">
+                    {b.status === "awaiting_confirmation" && (
+                      <span className="rounded-pill bg-amber-100 px-2.5 py-1 text-2xs font-semibold text-amber-700">
+                        {ADVISOR_STATUS_LABEL[b.status]}
+                      </span>
+                    )}
+                    {need && <IndustryTag name={need.industry.name} />}
+                  </span>
                 </div>
                 <p className="mt-3 text-h3 text-ink">
                   {need ? need.problemArea : b.scopeDescription}

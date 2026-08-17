@@ -5,11 +5,17 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
+import { releasePaymentForBooking } from "@/lib/actions/payments";
+import { notifyOpsDisputeRaised } from "@/lib/email/notify";
 
 /**
  * Raise a dispute/flag on a booking. Either party may raise one; it lands in the
- * ops queue (Screen 15) and opens the resolution view (Screen 18). Marks the
- * booking "disputed".
+ * ops queue (Screen 15), emails ops so nobody has to be watching the dashboard,
+ * and opens the resolution view (Screen 18). Marks the booking "disputed".
+ *
+ * This is also the "something went wrong" path off the client's completion
+ * confirmation screen — raising it here parks the booking before any payout
+ * moves, which is the whole point of asking the client to confirm.
  */
 export async function raiseDispute(formData: FormData) {
   const user = await getCurrentUser();
@@ -29,6 +35,10 @@ export async function raiseDispute(formData: FormData) {
     prisma.booking.update({ where: { id: bookingId }, data: { status: "disputed" } }),
   ]);
 
+  // Fail-soft (like every other notify) — a flag must still be recorded even if
+  // the alert can't go out. The Dispute row is what ops actually works from.
+  await notifyOpsDisputeRaised(bookingId, user.id, notes);
+
   revalidatePath("/ops");
   revalidatePath(`/bookings/${bookingId}/messages`);
   redirect(`/bookings/${bookingId}/messages?reported=1`);
@@ -36,7 +46,12 @@ export async function raiseDispute(formData: FormData) {
 
 /**
  * Screen 18 — ops resolves or escalates a dispute. Appends a resolution note to
- * the evidence trail and, on resolve, moves the booking to "completed". OPS only.
+ * the evidence trail and, on resolve, moves the booking to "completed" AND
+ * releases the held payment. That release is load-bearing: resolving used to
+ * lean on the client later submitting a review to trigger the payout, and now
+ * that completion is its own flow this is the only thing that pays the advisor
+ * out on a disputed booking. Refunding instead is the other outcome — see
+ * refundBooking in lib/actions/payments.ts. OPS only.
  */
 export async function resolveDispute(formData: FormData) {
   const ops = await getCurrentUser();
@@ -58,9 +73,19 @@ export async function resolveDispute(formData: FormData) {
   await prisma.$transaction([
     prisma.dispute.update({ where: { id: disputeId }, data: { status, notes: stamped } }),
     ...(action === "resolve"
-      ? [prisma.booking.update({ where: { id: dispute.bookingId }, data: { status: "completed" } })]
+      ? [
+          prisma.booking.update({
+            where: { id: dispute.bookingId },
+            data: { status: "completed", clientConfirmedAt: new Date() },
+          }),
+        ]
       : []),
   ]);
+
+  if (action === "resolve") {
+    // Idempotent, and a no-op if ops already refunded instead.
+    await releasePaymentForBooking(dispute.bookingId);
+  }
 
   revalidatePath("/ops");
   revalidatePath("/ops/disputes");

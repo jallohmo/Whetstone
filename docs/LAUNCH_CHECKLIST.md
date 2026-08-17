@@ -112,6 +112,12 @@ the account page, except the client receipt which always sends):
 - **New message** → the other party in the thread.
 - **Payout released** → advisor.
 - **Session reminders** → both parties, 24h and 1h before (see §5c).
+- **Confirm completion** → client, when the advisor marks the work done; the
+  day-3 nudge if they haven't acted (see §5d).
+- **Leave feedback** → client, once the booking completes. Optional — the payout
+  has already moved by then.
+- **Booking flagged** → ops, whenever either party reports a problem. Goes to
+  `OPS_ALERT_EMAIL`, or to every OPS_ADMIN account's email if that's unset.
 
 ### 5c. Session reminders (Vercel Cron)
 
@@ -134,6 +140,23 @@ Time-based, so they run from a scheduled endpoint rather than inline:
   on the `sessionReminders` preference, advisors always receive them. Each
   window is stamped on the `sessions` row so it sends exactly once (migration
   `0012`). Requires `RESEND_API_KEY` (§5b) — no key, no email.
+
+### 5d. Booking lifecycle (Vercel Cron)
+
+A second daily cron at `/api/cron/booking-lifecycle` (`30 9 * * *`), guarded by
+the same `CRON_SECRET`. Three sweeps per run:
+
+- `confirmed` → `in_progress` once a booking's first session has started.
+- Day-3 nudge to clients sitting on an unconfirmed completion (stamped on the
+  booking, so it sends exactly once).
+- Day-7 auto-accept: confirms on the client's behalf and releases the advisor's
+  payout. **This is load-bearing** — without it, a client who never confirms
+  leaves the advisor's money held indefinitely.
+
+Both crons are daily, which keeps the project inside Hobby's cron limits (two
+jobs, daily cadence). The windows live in `src/lib/booking-status.ts`
+(`COMPLETION_REMINDER_DAYS`, `COMPLETION_AUTO_ACCEPT_DAYS`) — change them there,
+not in the route.
 
 ## 6. Pre-launch activities — production domain & Stripe go-live
 
