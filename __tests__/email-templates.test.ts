@@ -4,6 +4,7 @@ import {
   completionAwaitingConfirmationEmail,
   reviewInviteEmail,
   opsDisputeAlertEmail,
+  needPostedEmail,
 } from "@/lib/email/templates";
 
 /**
@@ -70,6 +71,59 @@ describe("email templates", () => {
     it("says why the recipient got it", () => {
       const { html } = matchesReadyEmail({ ...base, advisorCount: 1 });
       expect(html).toContain("you posted a business challenge");
+    });
+  });
+
+  describe("needPostedEmail", () => {
+    const opsBase = {
+      businessName: "Jalloh Coffee",
+      problemArea: "cash flow",
+      industry: "Hospitality",
+      description: "We're three months behind on supplier terms and need help renegotiating.",
+      url: "https://app.whetstone.au/ops/needs/abc123/match",
+    };
+
+    it("names the challenge in the subject so the queue is triageable from the inbox", () => {
+      const { subject } = needPostedEmail(opsBase);
+      expect(subject).toBe("New need to match: cash flow");
+    });
+
+    it("carries the client, industry and description so ops can triage without opening it", () => {
+      const { html } = needPostedEmail(opsBase);
+      expect(html).toContain("Jalloh Coffee");
+      expect(html).toContain("Hospitality");
+      expect(html).toContain("renegotiating");
+    });
+
+    it("links the CTA to the matching workbench, not the client-facing shortlist", () => {
+      const { html } = needPostedEmail(opsBase);
+      expect(html).toContain(opsBase.url);
+      expect(html).not.toContain("/needs/abc123/matches");
+    });
+
+    it("truncates a long description rather than mailing the whole essay", () => {
+      const { html } = needPostedEmail({ ...opsBase, description: "a".repeat(600) });
+      expect(html).toContain("…");
+      expect(html).not.toContain("a".repeat(401));
+    });
+
+    it("escapes client-supplied text rather than injecting it as markup", () => {
+      const { html } = needPostedEmail({
+        ...opsBase,
+        businessName: "Tom & Jerry <Ltd>",
+        description: '<script>alert("xss")</script>',
+      });
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;script&gt;");
+      expect(html).toContain("&amp;");
+      expect(html).not.toContain("<Ltd>");
+    });
+
+    it("reads as an internal alert, not a client email with account settings", () => {
+      const { html } = needPostedEmail(opsBase);
+      expect(html).toContain("ops matching rota");
+      expect(html).toContain("OPS_ALERT_EMAIL");
+      expect(html).not.toContain("Manage which emails you receive");
     });
   });
 

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, displayName } from "@/lib/auth";
+import { notifyNeedPosted } from "@/lib/email/notify";
 
 /**
  * A2 — Post a need. Signup-first: a need belongs to a CustomerProfile from the
@@ -56,6 +57,11 @@ export async function createNeed(formData: FormData) {
       status: "open",
     },
   });
+
+  // Ops alert — nothing else tells them a need is waiting, and the queue is a
+  // pull-only screen. Fail-soft like every other dispatcher, and awaited BEFORE
+  // the redirect below, which throws by design.
+  await notifyNeedPosted(need.id);
 
   redirect(`/needs/${need.id}/matches`);
 }
