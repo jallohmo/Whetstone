@@ -210,10 +210,22 @@ model Booking {
   priceCents                 Int             @map("price_cents") // copied at booking time
   currency                   String          @default("AUD") @map("currency") // copied at booking time
   status                     String          @default("pending_payment")
-  // "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed"
+  // "pending_payment" | "confirmed" | "in_progress" | "awaiting_confirmation"
+  //   | "completed" | "cancelled" | "disputed"
+  // Completion is two-sided: the advisor marks the work done (-> awaiting_confirmation),
+  // then the client accepts (-> completed), and only that acceptance releases the held
+  // payment. See lib/actions/completion.ts for the transitions and their guards.
   // Must be true before status can become "confirmed" — enforced in app logic, not just schema.
   insuranceCoverageConfirmed Boolean         @default(false) @map("insurance_coverage_confirmed")
   createdAt                  DateTime        @default(now()) @map("created_at")
+  // Completion trail. advisorCompletedAt starts the client's acceptance window;
+  // completionRemindedAt is the day-3 nudge stamp (set once, same atomic-claim
+  // pattern as the session reminders); clientConfirmedAt records acceptance —
+  // whether the client clicked it or the day-7 sweep did it for them.
+  advisorCompletedAt         DateTime?       @map("advisor_completed_at")
+  completionRemindedAt       DateTime?       @map("completion_reminded_at")
+  clientConfirmedAt          DateTime?       @map("client_confirmed_at")
+  completionAutoAccepted     Boolean         @default(false) @map("completion_auto_accepted")
   sessions                   Session[]
   payment                    Payment?
   review                     Review?
@@ -233,6 +245,9 @@ model Session {
   booking      Booking  @relation(fields: [bookingId], references: [id])
   scheduledAt  DateTime @map("scheduled_at")
   status       String   @default("scheduled") // "scheduled" | "completed" | "no_show" | "rescheduled"
+  // Set when the advisor records the outcome above. A booking can only be marked
+  // complete once every one of its sessionCount sessions has left "scheduled".
+  outcomeAt    DateTime? @map("outcome_at")
   videoCallUrl String?  @map("video_call_url")
   // Reminder dispatch stamps (session-reminder cron). Null = not yet sent; set
   // atomically when the reminder for that window goes out, so it sends once.

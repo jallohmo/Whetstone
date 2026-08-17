@@ -18,6 +18,7 @@ import { DashCard } from "@/components/dashboard/DashCard";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 import { getLandingData } from "@/lib/featured";
 import { greeting, firstNameOf, dominantCurrency } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
@@ -64,6 +65,7 @@ export default async function ClientHomePage() {
   let upcoming: Awaited<ReturnType<typeof loadUpcoming>> = [];
   let past: Awaited<ReturnType<typeof loadPast>> = [];
   let pendingReview: Awaited<ReturnType<typeof loadPendingReview>> = null;
+  let awaitingConfirmation: Awaited<ReturnType<typeof loadAwaitingConfirmation>> = null;
   let threads: Awaited<ReturnType<typeof loadThreads>> = [];
   let needs: Awaited<ReturnType<typeof loadNeeds>> = [];
   let advisorsWorkedWith = 0;
@@ -71,10 +73,11 @@ export default async function ClientHomePage() {
 
   if (profile) {
     const cid = profile.id;
-    [upcoming, past, pendingReview, threads, needs, advisorsWorkedWith, ytd] = await Promise.all([
+    [upcoming, past, pendingReview, awaitingConfirmation, threads, needs, advisorsWorkedWith, ytd] = await Promise.all([
       loadUpcoming(cid, now),
       loadPast(cid, now),
       loadPendingReview(cid),
+      loadAwaitingConfirmation(cid),
       loadThreads(cid),
       loadNeeds(cid),
       prisma.booking
@@ -294,6 +297,29 @@ export default async function ClientHomePage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-5">
+          {/* Confirm completion — ahead of the review prompt on purpose: this is
+              the one the advisor's payout is waiting on. */}
+          {awaitingConfirmation && (
+            <Card style={{ borderColor: "rgba(46,69,255,.28)" }}>
+              <span className="inline-flex items-center rounded-pill bg-brand-blue-100 px-2.5 py-1 text-2xs font-semibold text-brand-blue-600">
+                Action needed
+              </span>
+              <h2 className="mt-2.5 text-h3 text-ink">
+                {awaitingConfirmation.advisorName} marked your work complete
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">{awaitingConfirmation.topic}</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Confirm it and their payment is released from the hold.
+              </p>
+              <Link
+                href={`/bookings/${awaitingConfirmation.bookingId}/confirm-completion`}
+                className="mt-4 flex w-full items-center justify-center rounded-md bg-ink py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
+              >
+                Review and confirm
+              </Link>
+            </Card>
+          )}
+
           {/* Leave a review */}
           {pendingReview && (
             <Card style={{ borderColor: "rgba(255,45,120,.28)" }}>
@@ -398,7 +424,7 @@ async function loadUpcoming(customerId: string, now: Date) {
   const rows = await prisma.session.findMany({
     where: {
       scheduledAt: { gte: now },
-      booking: { customerId, status: { in: ["confirmed", "in_progress"] } },
+      booking: { customerId, status: { in: [...IN_DELIVERY_BOOKING_STATUSES] } },
     },
     orderBy: { scheduledAt: "asc" },
     take: 5,
@@ -466,6 +492,21 @@ async function loadPendingReview(customerId: string) {
  * shortlist URL is effectively unlisted — the "matches are ready" email would be
  * the only way back to it, which is the fragility the guest flow had.
  */
+/** The booking the advisor has marked done and this client hasn't accepted yet. */
+async function loadAwaitingConfirmation(customerId: string) {
+  const b = await prisma.booking.findFirst({
+    where: { customerId, status: "awaiting_confirmation" },
+    orderBy: { advisorCompletedAt: "asc" },
+    select: { id: true, scopeDescription: true, advisor: { select: advisorSelect } },
+  });
+  if (!b) return null;
+  return {
+    bookingId: b.id,
+    topic: b.scopeDescription,
+    advisorName: displayName(b.advisor.user),
+  };
+}
+
 async function loadNeeds(customerId: string) {
   const rows = await prisma.need.findMany({
     where: { customerId, status: { not: "closed" } },

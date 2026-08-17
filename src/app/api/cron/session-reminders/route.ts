@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifySessionReminder } from "@/lib/email/notify";
 import { reportError } from "@/lib/observability";
+import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 
 /**
  * Session-reminder cron. Invoked on a schedule by Vercel Cron (see vercel.json)
@@ -41,7 +42,7 @@ async function processWindow(which: "24h" | "1h", lower: Date, upper: Date): Pro
   const candidates = await prisma.session.findMany({
     where: {
       scheduledAt: { gt: lower, lte: upper },
-      booking: { status: { in: ["confirmed", "in_progress"] } },
+      booking: { status: { in: [...IN_DELIVERY_BOOKING_STATUSES] } },
       ...(which === "24h" ? { reminded24hAt: null } : { reminded1hAt: null }),
     },
     select: { id: true },

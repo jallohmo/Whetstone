@@ -18,6 +18,9 @@ const GATED_ROUTES = [
   "/needs/new",
   "/home",
   "/bookings",
+  // Completion confirmation releases the advisor's payment, so it must never be
+  // reachable without a session — the page re-checks ownership too.
+  "/bookings/abc123/confirm-completion",
   "/messages",
   "/account",
 ];

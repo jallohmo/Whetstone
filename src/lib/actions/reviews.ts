@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { releasePaymentForBooking } from "@/lib/actions/payments";
 
 /**
  * Screen 9 (B3, C2). Post-session review + outcome survey. Writes Review (rating
@@ -12,6 +11,13 @@ import { releasePaymentForBooking } from "@/lib/actions/payments";
  * later categorisation — problemCategory stays nullable until Phase 2). One of
  * each per booking (unique bookingId), so we upsert. Only the booking's customer
  * may submit.
+ *
+ * Feedback ONLY. This used to be the thing that completed a booking and released
+ * the advisor's payment, which made getting paid contingent on a client choosing
+ * to fill in an optional survey. Completion and payout now live in
+ * lib/actions/completion.ts, on the advisor-marks / client-accepts flow; a review
+ * can only be left once that has already happened. Do not reintroduce a status
+ * write or a payment release here.
  */
 export async function submitReview(formData: FormData) {
   const user = await getCurrentUser();
@@ -36,6 +42,13 @@ export async function submitReview(formData: FormData) {
   if (booking.customer.userId !== user.id) {
     throw new Error("Only the customer on this booking can review it.");
   }
+  if (booking.status !== "completed") {
+    throw new Error(
+      booking.status === "awaiting_confirmation"
+        ? "Confirm the booking is complete first, then you can leave feedback."
+        : "You can leave feedback once this booking is complete.",
+    );
+  }
 
   await prisma.$transaction([
     prisma.review.upsert({
@@ -48,12 +61,9 @@ export async function submitReview(formData: FormData) {
       update: { problemAddressed, wouldRebook, freeTextContext: freeText },
       create: { bookingId, problemAddressed, wouldRebook, freeTextContext: freeText },
     }),
-    prisma.booking.update({ where: { id: bookingId }, data: { status: "completed" } }),
   ]);
 
-  // Session done -> release the held funds to the advisor (minus commission).
-  await releasePaymentForBooking(bookingId);
-
   revalidatePath(`/advisors/${booking.advisorId}`);
-  redirect(`/bookings/${bookingId}/confirmed`);
+  revalidatePath("/");
+  redirect(`/bookings/${bookingId}/review?thanks=1`);
 }

@@ -139,8 +139,15 @@ ops only via one of the methods above.
 
 Payments use **Stripe Connect** (separate charges & transfers): the customer pays
 at checkout (funds held on the platform), and the advisor's cut is transferred to
-their connected account when the session completes (the customer's review triggers
-the release). Commission is `PLATFORM_COMMISSION_BPS` (default 1500 = 15%).
+their connected account when the booking completes. Commission is
+`PLATFORM_COMMISSION_BPS` (default 1500 = 15%).
+
+**Completion is two-sided.** The advisor marks the work done (booking →
+`awaiting_confirmation`), the client is emailed, and the client accepting is what
+releases the transfer. If the client never acts, the booking-lifecycle cron (§5c
+of the launch checklist) nudges them at day 3 and accepts on their behalf at day
+7, so a quiet client can't strand an advisor's payout. The post-session review is
+feedback only and releases nothing.
 
 **Without** `STRIPE_SECRET_KEY`, checkout falls back to recording a held payment
 directly so the full flow still works in dev — no card needed.
@@ -156,8 +163,9 @@ To enable real payments:
    subscribed to **`checkout.session.completed`**, and put its signing secret in
    `STRIPE_WEBHOOK_SECRET`. The route verifies the signature on the raw body and
    fulfils the booking (held Payment + confirmed).
-4. Money movement: checkout → held; customer review → transfer to advisor
-   (released); ops can **Refund** from the dispute view (→ refunded + cancelled).
+4. Money movement: checkout → held; client confirms completion (or the day-7
+   sweep does) → transfer to advisor (released); ops resolving a dispute also
+   releases; ops can **Refund** from the dispute view (→ refunded + cancelled).
 
 Amounts are multi-currency throughout — each booking/payment carries its own ISO
 currency and Stripe is called in that currency.

@@ -291,6 +291,136 @@ export function matchesReadyEmail(p: {
   };
 }
 
+/**
+ * To the client: the advisor has marked the work done and we need them to accept
+ * before the advisor is paid. This is the one email in the completion flow that
+ * asks for an action, so it states the auto-accept deadline plainly rather than
+ * springing it on them later.
+ */
+export function completionAwaitingConfirmationEmail(p: {
+  customerName: string;
+  advisorName: string;
+  scope: string;
+  sessionsLabel: string;
+  deadline: string;
+  url: string;
+}): EmailContent {
+  return {
+    subject: `${p.advisorName} has marked your session complete`,
+    html: layout({
+      preview: `Confirm your session with ${p.advisorName} so they can be paid.`,
+      eyebrow: "Confirm completion",
+      heading: `One last step, ${p.customerName}`,
+      body:
+        para(
+          `<strong style="color:${INK}">${esc(p.advisorName)}</strong> has marked your work together as complete. Have a quick look, and if you're happy, confirm it — that's what releases their payment from the hold.`,
+        ) +
+        infoPanel([
+          { label: "Advisor", value: p.advisorName },
+          { label: "Sessions", value: p.sessionsLabel },
+          { label: "Focus", value: p.scope },
+        ]),
+      cta: { label: "Review and confirm", url: p.url },
+      note: `If we don't hear from you by ${p.deadline}, we'll confirm it automatically. Not right? Open the link above and tell us what went wrong instead — our team will step in before any money moves.`,
+      footerReason: "You're receiving this because you have a session on Whetstone awaiting your confirmation.",
+    }),
+  };
+}
+
+/** To the client: the day-3 nudge before the day-7 auto-accept. */
+export function completionReminderEmail(p: {
+  customerName: string;
+  advisorName: string;
+  deadline: string;
+  url: string;
+}): EmailContent {
+  return {
+    subject: `Reminder: confirm your session with ${p.advisorName}`,
+    html: layout({
+      preview: `Your confirmation is still outstanding.`,
+      eyebrow: "Still waiting",
+      heading: "Just a nudge",
+      body: para(
+        `${esc(p.customerName)}, <strong style="color:${INK}">${esc(p.advisorName)}</strong> is still waiting on your confirmation for your recent session. It takes one click, and it's what releases their payment.`,
+      ),
+      cta: { label: "Confirm completion", url: p.url },
+      note: `We'll confirm this automatically on ${p.deadline} if we haven't heard from you. If something wasn't right, open the link and tell us instead.`,
+      footerReason: "You're receiving this because you have a session on Whetstone awaiting your confirmation.",
+    }),
+  };
+}
+
+/**
+ * To the client: the booking is done and we'd like feedback. Deliberately
+ * separate from the confirmation step — accepting shouldn't be held hostage to
+ * filling in a survey, so this is an invitation with nothing riding on it.
+ */
+export function reviewInviteEmail(p: {
+  customerName: string;
+  advisorName: string;
+  autoAccepted: boolean;
+  url: string;
+}): EmailContent {
+  const opening = p.autoAccepted
+    ? `Your session with <strong style="color:${INK}">${esc(p.advisorName)}</strong> was confirmed automatically after the review window closed, and their payment has been released.`
+    : `Thanks for confirming — <strong style="color:${INK}">${esc(p.advisorName)}</strong> has been paid.`;
+  return {
+    subject: `How was your session with ${p.advisorName}?`,
+    html: layout({
+      preview: `Tell us how ${p.advisorName} did.`,
+      eyebrow: "Your feedback",
+      heading: `How did it go, ${p.customerName}?`,
+      body: para(
+        `${opening} If you have 20 seconds, tell us how it went — it's the main thing that decides who we put in front of the next person with your problem.`,
+      ),
+      cta: { label: "Leave feedback", url: p.url },
+      note: "Entirely optional, and it stays anonymous to other clients.",
+      footerReason: "You're receiving this because you completed a session on Whetstone.",
+    }),
+  };
+}
+
+/**
+ * To ops: a party has flagged a problem. Goes to the ops queue regardless (the
+ * Dispute row is what drives Screen 15) — this is the push so nobody has to be
+ * watching the dashboard for a booking where money is sitting in the balance.
+ */
+export function opsDisputeAlertEmail(p: {
+  bookingId: string;
+  raisedByLabel: string;
+  advisorName: string;
+  customerName: string;
+  amount: string;
+  notes: string;
+  url: string;
+}): EmailContent {
+  const trimmed = p.notes.length > 400 ? `${p.notes.slice(0, 400)}…` : p.notes;
+  return {
+    subject: `[Ops] Problem reported on booking ${p.bookingId}`,
+    html: layout({
+      preview: `${p.raisedByLabel} reported a problem — payment is on hold.`,
+      eyebrow: "Needs investigation",
+      heading: "A booking has been flagged",
+      body:
+        para(
+          `<strong style="color:${INK}">${esc(p.raisedByLabel)}</strong> reported a problem. The booking is marked disputed and its payment stays held until this is resolved.`,
+        ) +
+        infoPanel([
+          { label: "Booking", value: p.bookingId },
+          { label: "Client", value: p.customerName },
+          { label: "Advisor", value: p.advisorName },
+          { label: "Held", value: p.amount },
+        ]) +
+        panel(
+          `<div style="font-family:${FONT};font-size:15px;line-height:1.5;color:${INK};border-left:3px solid ${BLUE};padding-left:14px;">${esc(trimmed)}</div>`,
+        ),
+      cta: { label: "Open in ops", url: p.url },
+      note: "Resolving the dispute releases the payment to the advisor; refunding it cancels the booking.",
+      footerReason: "You're receiving this because you're an ops admin on Whetstone.",
+    }),
+  };
+}
+
 /** To the advisor: held earnings were released (gated on "payoutConfirmations"). */
 export function payoutReleasedEmail(p: {
   advisorName: string;

@@ -3,15 +3,20 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { displayName } from "@/lib/auth";
 import { resolvePrefs } from "@/lib/notifications";
+import { autoAcceptDeadline, IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 import { splitCommission, formatMoney } from "@/lib/currency";
 import { reportError } from "@/lib/observability";
 import { emailEnabled, sendEmail } from "./client";
 import {
   bookingConfirmedEmail,
+  completionAwaitingConfirmationEmail,
+  completionReminderEmail,
   matchesReadyEmail,
   newBookingEmail,
   newMessageEmail,
+  opsDisputeAlertEmail,
   payoutReleasedEmail,
+  reviewInviteEmail,
   sessionReminderEmail,
 } from "./templates";
 
@@ -195,7 +200,9 @@ export async function notifySessionReminder(sessionId: string): Promise<void> {
       },
     });
     if (!s) return;
-    if (s.booking.status !== "confirmed" && s.booking.status !== "in_progress") return;
+    // Not awaiting_confirmation: once the advisor says the work is done, an
+    // "upcoming session" reminder would be wrong.
+    if (!IN_DELIVERY_BOOKING_STATUSES.includes(s.booking.status as "confirmed" | "in_progress")) return;
 
     const whenLabel = when.format(s.scheduledAt);
     const rel = relativePhrase(s.scheduledAt, new Date());
@@ -234,6 +241,189 @@ export async function notifySessionReminder(sessionId: string): Promise<void> {
     });
   } catch (err) {
     reportError("notifySessionReminder", err, { sessionId });
+  }
+}
+
+const dayMonth = new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long" });
+
+/** Booking + parties, the shape every completion email needs. */
+function completionSelect() {
+  return {
+    id: true,
+    scopeDescription: true,
+    sessionCount: true,
+    advisorCompletedAt: true,
+    customer: {
+      select: {
+        businessName: true,
+        user: {
+          select: { email: true, firstName: true, lastName: true, fullName: true, notificationPrefs: true },
+        },
+      },
+    },
+    advisor: {
+      select: { user: { select: { email: true, firstName: true, lastName: true, fullName: true } } },
+    },
+  } as const;
+}
+
+/**
+ * To the client: the advisor marked the work complete and we need them to accept
+ * before the payout moves. Gated on the client's "booking updates" preference —
+ * but note the day-3 reminder and the day-7 auto-accept run regardless, so
+ * opting out slows the flow down rather than stalling anyone's money.
+ */
+export async function notifyCompletionAwaitingConfirmation(bookingId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: completionSelect(),
+    });
+    if (!booking) return;
+    if (!resolvePrefs("CUSTOMER", booking.customer.user.notificationPrefs).bookingUpdates) return;
+
+    await sendEmail({
+      to: booking.customer.user.email,
+      ...completionAwaitingConfirmationEmail({
+        customerName: displayName(booking.customer.user),
+        advisorName: displayName(booking.advisor.user),
+        scope: booking.scopeDescription,
+        sessionsLabel: `${booking.sessionCount} ${booking.sessionCount === 1 ? "session" : "sessions"}`,
+        deadline: dayMonth.format(autoAcceptDeadline(booking.advisorCompletedAt ?? new Date())),
+        url: `${appOrigin()}/bookings/${bookingId}/confirm-completion`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyCompletionAwaitingConfirmation", err, { bookingId });
+  }
+}
+
+/** The day-3 nudge (booking-lifecycle cron). Same gate as the first ask. */
+export async function notifyCompletionReminder(bookingId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: completionSelect(),
+    });
+    if (!booking) return;
+    if (!resolvePrefs("CUSTOMER", booking.customer.user.notificationPrefs).bookingUpdates) return;
+
+    await sendEmail({
+      to: booking.customer.user.email,
+      ...completionReminderEmail({
+        customerName: displayName(booking.customer.user),
+        advisorName: displayName(booking.advisor.user),
+        deadline: dayMonth.format(autoAcceptDeadline(booking.advisorCompletedAt ?? new Date())),
+        url: `${appOrigin()}/bookings/${bookingId}/confirm-completion`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyCompletionReminder", err, { bookingId });
+  }
+}
+
+/**
+ * To the client once the booking is completed: an invitation to leave feedback.
+ * Nothing hangs on it — the payout has already gone — so this is pref-gated and
+ * genuinely optional, unlike the confirmation ask above.
+ */
+export async function notifyReviewInvite(
+  bookingId: string,
+  opts: { auto?: boolean } = {},
+): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: completionSelect(),
+    });
+    if (!booking) return;
+    if (!resolvePrefs("CUSTOMER", booking.customer.user.notificationPrefs).bookingUpdates) return;
+
+    await sendEmail({
+      to: booking.customer.user.email,
+      ...reviewInviteEmail({
+        customerName: displayName(booking.customer.user),
+        advisorName: displayName(booking.advisor.user),
+        autoAccepted: opts.auto ?? false,
+        url: `${appOrigin()}/bookings/${bookingId}/review`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyReviewInvite", err, { bookingId });
+  }
+}
+
+/**
+ * To ops: someone flagged a booking. Recipients are OPS_ALERT_EMAIL if set,
+ * otherwise every OPS_ADMIN account — so this works out of the box on a fresh
+ * environment without another secret to configure. Never pref-gated: ops
+ * notifications aren't a user preference, and money is held pending the outcome.
+ */
+export async function notifyOpsDisputeRaised(
+  bookingId: string,
+  raisedByUserId: string,
+  notes: string,
+): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const [booking, dispute] = await Promise.all([
+      prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          customer: { select: { businessName: true, userId: true } },
+          advisor: { select: { userId: true, user: { select: { email: true, firstName: true, lastName: true, fullName: true } } } },
+          payment: { select: { amountCents: true, currency: true } },
+          priceCents: true,
+          currency: true,
+        },
+      }),
+      prisma.dispute.findFirst({
+        where: { bookingId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      }),
+    ]);
+    if (!booking) return;
+
+    const configured = process.env.OPS_ALERT_EMAIL?.trim();
+    const recipients = configured
+      ? configured.split(",").map((e) => e.trim()).filter(Boolean)
+      : (
+          await prisma.user.findMany({
+            where: { role: "OPS_ADMIN" },
+            select: { email: true },
+          })
+        ).map((u) => u.email);
+    if (recipients.length === 0) return;
+
+    const raisedByLabel =
+      raisedByUserId === booking.advisor.userId
+        ? `The advisor (${displayName(booking.advisor.user)})`
+        : raisedByUserId === booking.customer.userId
+          ? `The client (${booking.customer.businessName})`
+          : "Someone";
+
+    const content = opsDisputeAlertEmail({
+      bookingId,
+      raisedByLabel,
+      advisorName: displayName(booking.advisor.user),
+      customerName: booking.customer.businessName,
+      amount: formatMoney(
+        booking.payment?.amountCents ?? booking.priceCents,
+        booking.payment?.currency ?? booking.currency,
+      ),
+      notes,
+      url: `${appOrigin()}${dispute ? `/ops/disputes/${dispute.id}` : "/ops/disputes"}`,
+    });
+
+    for (const to of recipients) {
+      await sendEmail({ to, ...content });
+    }
+  } catch (err) {
+    reportError("notifyOpsDisputeRaised", err, { bookingId });
   }
 }
 
