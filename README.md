@@ -147,6 +147,19 @@ serverless Prisma `binaryTargets`). Import `jallohmo/Whetstone` at
 env-var table (with this project's public values pre-filled), and a
 `scripts/vercel-env-sync.sh` helper are in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 
+### Web Analytics
+
+The `@vercel/analytics` tracker is already mounted in `src/app/layout.tsx`, so no
+code changes are needed. To switch it on:
+
+1. Deploy this code to Vercel.
+2. Open the project's **Analytics** tab in the Vercel dashboard.
+3. Click **Enable** to activate Web Analytics.
+4. Data starts appearing after the first deployment that follows.
+
+Outside of Vercel (local `next dev`, other hosts) the component is inert — it
+only sends events from a deployed Vercel project with Analytics enabled.
+
 ## Deliberately deferred (per handover)
 
 - Endpoint-by-endpoint API contract (generate at build time once schema is locked)
