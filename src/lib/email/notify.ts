@@ -12,6 +12,7 @@ import {
   completionAwaitingConfirmationEmail,
   completionReminderEmail,
   matchesReadyEmail,
+  needPostedEmail,
   newBookingEmail,
   newMessageEmail,
   opsDisputeAlertEmail,
@@ -106,6 +107,72 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     }
   } catch (err) {
     reportError("notifyBookingConfirmed", err, { bookingId });
+  }
+}
+
+/**
+ * Who receives an internal ops alert: OPS_ALERT_EMAIL if set (comma-separated,
+ * so a shared alias and an individual on the rota can both be on it), otherwise
+ * every OPS_ADMIN account — so alerts work out of the box on a fresh environment
+ * with nothing extra to configure.
+ *
+ * Shared by every ops-facing dispatcher; introduced with the dispute alert and
+ * reused here rather than adding a second, parallel address to keep in sync.
+ */
+async function opsRecipients(): Promise<string[]> {
+  const configured = process.env.OPS_ALERT_EMAIL?.trim();
+  if (configured) {
+    return configured.split(",").map((e) => e.trim()).filter(Boolean);
+  }
+  const admins = await prisma.user.findMany({
+    where: { role: "OPS_ADMIN" },
+    select: { email: true },
+  });
+  return admins.map((u) => u.email);
+}
+
+/**
+ * Ops "a need needs matching" — fired by createNeed the moment a client posts.
+ * The counterpart to notifyMatchesReady: this opens the matching loop, that one
+ * closes it.
+ *
+ * Never preference-gated. Ops has no notification preferences of its own
+ * (resolvePrefs maps OPS_ADMIN onto the customer keys), and more to the point
+ * this is the only push signal that a need is waiting — without it a need sits
+ * at status "open" until someone happens to open the ops queue.
+ */
+export async function notifyNeedPosted(needId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const recipients = await opsRecipients();
+    if (recipients.length === 0) return;
+
+    const need = await prisma.need.findUnique({
+      where: { id: needId },
+      select: {
+        problemArea: true,
+        description: true,
+        industry: { select: { name: true } },
+        customer: { select: { businessName: true } },
+      },
+    });
+    if (!need) return;
+
+    const content = needPostedEmail({
+      businessName: need.customer.businessName,
+      problemArea: need.problemArea,
+      industry: need.industry.name,
+      description: need.description,
+      url: `${appOrigin()}/ops/needs/${needId}/match`,
+    });
+
+    // One send per address rather than a single multi-recipient email, so ops
+    // don't see each other's addresses and one bad address can't drop the rest.
+    for (const to of recipients) {
+      await sendEmail({ to, ...content });
+    }
+  } catch (err) {
+    reportError("notifyNeedPosted", err, { needId });
   }
 }
 
@@ -388,15 +455,7 @@ export async function notifyOpsDisputeRaised(
     ]);
     if (!booking) return;
 
-    const configured = process.env.OPS_ALERT_EMAIL?.trim();
-    const recipients = configured
-      ? configured.split(",").map((e) => e.trim()).filter(Boolean)
-      : (
-          await prisma.user.findMany({
-            where: { role: "OPS_ADMIN" },
-            select: { email: true },
-          })
-        ).map((u) => u.email);
+    const recipients = await opsRecipients();
     if (recipients.length === 0) return;
 
     const raisedByLabel =

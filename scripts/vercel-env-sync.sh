@@ -26,6 +26,17 @@ KEYS=(
   PLATFORM_COMMISSION_BPS
   INSURANCE_COVERAGE_ACTIVE
   INSURANCE_COVERAGE_STATEMENT
+  # Email + ops alerts. These had drifted out of this list while .env.example
+  # gained them, so a synced project silently had email switched off (an unset
+  # RESEND_API_KEY makes every send a no-op).
+  RESEND_API_KEY
+  EMAIL_FROM
+  EMAIL_REPLY_TO
+  OPS_ALERT_EMAIL
+  NEXT_PUBLIC_SITE_URL
+  # Cron + video.
+  CRON_SECRET
+  DAILY_API_KEY
 )
 
 # Read a KEY="value" (or KEY=value) line from the env file, stripping quotes.

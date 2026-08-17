@@ -53,10 +53,15 @@ interface LayoutOpts {
   note?: string;
   /** First footer line — why they're receiving this. */
   footerReason: string;
+  /**
+   * Second footer line. Defaults to the client/advisor fine print; internal ops
+   * alerts override it, since an ops alias has no account settings to manage.
+   */
+  footerFinePrint?: string;
 }
 
 /** Wrap content in the shared Whetstone shell. */
-function layout({ preview, eyebrow, heading, body, cta, note, footerReason }: LayoutOpts): string {
+function layout({ preview, eyebrow, heading, body, cta, note, footerReason, footerFinePrint }: LayoutOpts): string {
   const button = cta
     ? `<tr><td style="padding:28px 40px 0 40px;">
          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
@@ -100,7 +105,7 @@ ${LOGO}
 </td></tr>
 <tr><td style="padding:26px 24px 8px 24px;">
   <p style="margin:0 0 6px 0;font-family:${FONT};font-size:12px;line-height:1.5;color:${FOOTER};">${esc(footerReason)}</p>
-  <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${FOOTER};">Verified, insured, bounded advisory sessions. Manage which emails you receive in your account settings.</p>
+  <p style="margin:0;font-family:${FONT};font-size:12px;line-height:1.5;color:${FOOTER};">${esc(footerFinePrint ?? "Verified, insured, bounded advisory sessions. Manage which emails you receive in your account settings.")}</p>
 </td></tr>
 </table>
 </td></tr>
@@ -417,6 +422,50 @@ export function opsDisputeAlertEmail(p: {
       cta: { label: "Open in ops", url: p.url },
       note: "Resolving the dispute releases the payment to the advisor; refunding it cancels the booking.",
       footerReason: "You're receiving this because you're an ops admin on Whetstone.",
+    }),
+  };
+}
+
+/**
+ * To OPS: a client posted a need that needs matching by hand. This is the other
+ * half of the matching loop — matchesReadyEmail closes it when ops release the
+ * shortlist. Internal, so it is never preference-gated: a missed alert means a
+ * need sits at status "open" with nobody looking at it.
+ *
+ * The description is client-supplied free text and can be long, so it is
+ * truncated to a decision-sized snippet; the CTA goes straight to the matching
+ * workbench for this need.
+ */
+export function needPostedEmail(p: {
+  businessName: string;
+  problemArea: string;
+  industry: string;
+  description: string;
+  url: string;
+}): EmailContent {
+  const trimmed = p.description.length > 400 ? `${p.description.slice(0, 400)}…` : p.description;
+  return {
+    subject: `New need to match: ${p.problemArea}`,
+    html: layout({
+      preview: `${p.businessName} (${p.industry}) posted: ${p.problemArea}`,
+      eyebrow: "Needs matching",
+      heading: "A new need is waiting",
+      body:
+        para(
+          `<strong style="color:${INK}">${esc(p.businessName)}</strong> just posted a business challenge. It sits at <strong style="color:${INK}">open</strong> until someone shortlists advisors for it.`,
+        ) +
+        infoPanel([
+          { label: "Client", value: p.businessName },
+          { label: "Challenge", value: p.problemArea },
+          { label: "Industry", value: p.industry },
+        ]) +
+        panel(
+          `<div style="font-family:${FONT};font-size:15px;line-height:1.5;color:${INK};border-left:3px solid ${BLUE};padding-left:14px;">${esc(trimmed)}</div>`,
+        ),
+      cta: { label: "Match this need", url: p.url },
+      note: "The client sees nothing until a shortlist is released.",
+      footerReason: "You're receiving this because you're on the Whetstone ops matching rota.",
+      footerFinePrint: "Internal alert — sent to the ops address configured in OPS_ALERT_EMAIL.",
     }),
   };
 }

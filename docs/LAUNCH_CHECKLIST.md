@@ -106,8 +106,11 @@ booking, message, or payout email. To enable:
    magic-link mail leaves from the same verified domain.
 
 What's wired today (all gated by each recipient's notification preferences from
-the account page, except the client receipt which always sends):
+the account page, except the client receipt and the internal ops alert, which
+always send):
 
+- **Need posted** → ops, so a new need doesn't sit unmatched until someone opens
+  the queue. Same recipients as the flagged-booking alert below.
 - **Booking confirmed** → client receipt + advisor "new booking".
 - **New message** → the other party in the thread.
 - **Payout released** → advisor.
@@ -116,8 +119,11 @@ the account page, except the client receipt which always sends):
   day-3 nudge if they haven't acted (see §5d).
 - **Leave feedback** → client, once the booking completes. Optional — the payout
   has already moved by then.
-- **Booking flagged** → ops, whenever either party reports a problem. Goes to
-  `OPS_ALERT_EMAIL`, or to every OPS_ADMIN account's email if that's unset.
+- **Booking flagged** → ops, whenever either party reports a problem.
+
+Both ops alerts go to `OPS_ALERT_EMAIL` (comma-separated for several), or to
+every OPS_ADMIN account's email if that's unset — so they work on a fresh
+environment with nothing extra to configure.
 
 ### 5c. Session reminders (Vercel Cron)
 
