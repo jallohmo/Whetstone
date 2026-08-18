@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Calendar, Check, MessageCircle } from "lucide-react";
 import { Card } from "@/components/ui";
 import { BookingStepper } from "@/components/ui/BookingStepper";
@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { platformFormat } from "@/lib/time";
 
 // Screen 7 — Booking confirmation (A4/A6). Plain-spoken copy, prep guidance.
@@ -15,14 +16,21 @@ export default async function BookingConfirmedPage({
 }: {
   params: { bookingId: string };
 }) {
+  // Ownership check, as on the sibling confirm-completion and review screens:
+  // middleware proves there is a session, not that this booking belongs to it.
+  const user = await getCurrentUser();
+  if (!user) redirect(`/signup?next=/bookings/${params.bookingId}/confirmed`);
+
   const booking = await prisma.booking.findUnique({
     where: { id: params.bookingId },
     include: {
+      customer: { select: { userId: true } },
       advisor: { include: { user: true } },
       sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
     },
   });
   if (!booking) notFound();
+  if (booking.customer.userId !== user.id) notFound();
 
   const advisorName = booking.advisor.user.email.split("@")[0];
   const firstSession = booking.sessions[0];

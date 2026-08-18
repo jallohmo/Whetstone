@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Lock } from "lucide-react";
 import { PageHeader, Card, Button } from "@/components/ui";
 import { BookingStepper } from "@/components/ui/BookingStepper";
@@ -8,6 +8,7 @@ import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNo
 import { createCheckout } from "@/lib/actions/payments";
 import { stripeEnabled } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { platformFormat } from "@/lib/time";
 
 // Screen 6 — Payment/checkout (A6). Insurance coverage is visible here, not
@@ -18,14 +19,25 @@ export default async function CheckoutPage({
 }: {
   params: { bookingId: string };
 }) {
+  // Middleware only guarantees a session on /bookings/*, not that this booking
+  // belongs to the person holding it. Without the ownership check below, any
+  // signed-in user could read any booking's advisor, scope and price by id.
+  const user = await getCurrentUser();
+  if (!user) redirect(`/signup?next=/bookings/${params.bookingId}/checkout`);
+
   const booking = await prisma.booking.findUnique({
     where: { id: params.bookingId },
     include: {
+      customer: { select: { userId: true } },
       advisor: { include: { user: true } },
       sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
     },
   });
   if (!booking) notFound();
+
+  // Paying is the client's alone — not the advisor's, and not ops'. notFound()
+  // rather than a 403 so this doesn't confirm that a given booking id exists.
+  if (booking.customer.userId !== user.id) notFound();
 
   const advisorName = booking.advisor.user.email.split("@")[0];
   const firstSession = booking.sessions[0];

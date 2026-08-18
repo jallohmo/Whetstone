@@ -19,15 +19,6 @@ const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000'
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined
 const launchOptions = executablePath ? { executablePath } : undefined
 
-/**
- * The authenticated journey seeds real users and walks one revenue path end to
- * end. It is about server behaviour, not rendering, so running it five times
- * across the browser matrix would only multiply the seeding cost and the rows
- * left behind. The cross-browser projects skip it; the `journey` project below
- * owns it and runs it once, on Chromium.
- */
-const JOURNEY_SPEC = '**/booking-journey.spec.ts'
-
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
@@ -61,41 +52,28 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: JOURNEY_SPEC,
       use: { ...devices['Desktop Chrome'], launchOptions },
     },
 
     {
       name: 'firefox',
-      testIgnore: JOURNEY_SPEC,
       use: { ...devices['Desktop Firefox'] },
     },
 
     {
       name: 'webkit',
-      testIgnore: JOURNEY_SPEC,
       use: { ...devices['Desktop Safari'] },
     },
 
     // Mobile testing
     {
       name: 'Mobile Chrome',
-      testIgnore: JOURNEY_SPEC,
       use: { ...devices['Pixel 5'] },
     },
 
     {
       name: 'Mobile Safari',
-      testIgnore: JOURNEY_SPEC,
       use: { ...devices['iPhone 12'] },
-    },
-
-    // Signed-in, database-backed journey. Skips itself when the test project's
-    // credentials aren't in the environment (see e2e/fixtures/journey-fixtures.ts).
-    {
-      name: 'journey',
-      testMatch: JOURNEY_SPEC,
-      use: { ...devices['Desktop Chrome'], launchOptions },
     },
   ],
 
@@ -105,18 +83,5 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
-    /**
-     * The app under test needs the same configuration the deployed app does.
-     * INSURANCE_COVERAGE_ACTIVE is set explicitly because its absence is exactly
-     * what broke checkout in production: the gate in lib/platform-config.ts
-     * compares against the literal string "true", so unset means "no cover" and
-     * every payment throws. Passing it here means the journey exercises the
-     * covered path; leaving it out would make the suite fail for the same reason
-     * production did, which is the point of asserting the banner in step 6.
-     */
-    env: {
-      ...process.env as Record<string, string>,
-      INSURANCE_COVERAGE_ACTIVE: process.env.INSURANCE_COVERAGE_ACTIVE ?? 'true',
-    },
   },
 })
