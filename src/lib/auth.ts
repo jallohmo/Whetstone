@@ -1,5 +1,7 @@
 import { cache } from "react";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { SESSION_USER_HEADER } from "@/lib/supabase/session-header";
 import { prisma } from "@/lib/prisma";
 import { reportError } from "@/lib/observability";
 import type { UserRole } from "@prisma/client";
@@ -30,6 +32,37 @@ export function displayName(u: {
 }
 
 /**
+ * The id of the authenticated user, verified for THIS request.
+ *
+ * Middleware has already called supabase.auth.getUser() on every route that
+ * renders and forwarded the verified id on SESSION_USER_HEADER, so the common
+ * path reads a header instead of repeating a round trip to the Supabase auth
+ * API — one of two such calls per page render, and the app's database and auth
+ * both live a long way from the function region.
+ *
+ * The header cannot be spoofed: updateSession() deletes any inbound copy before
+ * setting its own (see stripSessionHeader in lib/supabase/middleware.ts).
+ *
+ * Falls back to a full auth call whenever the header is absent — contexts where
+ * middleware doesn't run, such as build-time rendering — so behaviour is
+ * unchanged anywhere the fast path isn't available.
+ */
+async function verifiedUserId(): Promise<string | undefined> {
+  try {
+    const fromMiddleware = headers().get(SESSION_USER_HEADER);
+    if (fromMiddleware) return fromMiddleware;
+  } catch {
+    // headers() throws outside a request scope; fall through to the auth call.
+  }
+
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id;
+}
+
+/**
  * The authenticated user for the current request, or null. Role comes from
  * public.users (the authoritative, server-written mirror) — never from
  * client-settable auth metadata. Wrapped in React cache() so multiple callers in
@@ -43,15 +76,12 @@ export function displayName(u: {
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   try {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = (await verifiedUserId()) ?? null;
+    if (!userId) return null;
 
     // Authoritative role/identity from our mirror table.
     const row = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { id: userId },
       select: {
         id: true,
         email: true,

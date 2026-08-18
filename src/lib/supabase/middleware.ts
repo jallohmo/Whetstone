@@ -1,7 +1,21 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_USER_HEADER } from "./session-header";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
+
+/**
+ * Removes any inbound copy of the session header. A client can send whatever
+ * headers it likes, so the value is trustworthy ONLY because middleware clears
+ * it on the way in and re-sets it from a verified session. Middleware runs on
+ * every route that renders (the matcher in src/middleware.ts excludes static
+ * file extensions only), so there is no path where a spoofed header survives.
+ */
+function stripSessionHeader(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.delete(SESSION_USER_HEADER);
+  return headers;
+}
 
 /**
  * Refreshes the Supabase session on every request and returns the user + a
@@ -24,7 +38,9 @@ export async function updateSession(request: NextRequest) {
     // where the Sentry/node integration in lib/observability isn't available.
     console.error("updateSession: failed to resolve the session —", err);
     return {
-      response: NextResponse.next({ request }),
+      // Still strip the header on the failure path — degrading to logged-out
+      // must not also mean forwarding a client-supplied user id.
+      response: NextResponse.next({ request: { headers: stripSessionHeader(request) } }),
       user: null,
       role: null,
       mfaRequired: false,
@@ -33,7 +49,11 @@ export async function updateSession(request: NextRequest) {
 }
 
 async function readSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // Cookies Supabase wants to write are collected here and applied to the
+  // response at the end. The response itself can only be built once the session
+  // is resolved, because the request headers it forwards carry the verified
+  // user id — and that isn't known until after getUser() returns.
+  const cookiesToApply: CookieToSet[] = [];
 
   const supabase = createServerClient(
     (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
@@ -45,13 +65,12 @@ async function readSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookieToSet[]) {
+          // Mutating request.cookies updates the request's Cookie header, so the
+          // headers cloned below already carry any refreshed tokens.
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+          cookiesToApply.push(...cookiesToSet);
         },
       },
     },
@@ -78,6 +97,15 @@ async function readSession(request: NextRequest) {
       mfaRequired = false;
     }
   }
+
+  // Cloned after getUser() so refreshed auth cookies are included.
+  const requestHeaders = stripSessionHeader(request);
+  if (user) requestHeaders.set(SESSION_USER_HEADER, user.id);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  cookiesToApply.forEach(({ name, value, options }) =>
+    response.cookies.set(name, value, options),
+  );
 
   return { response, user, role, mfaRequired };
 }

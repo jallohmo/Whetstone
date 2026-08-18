@@ -91,6 +91,18 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except static assets and image optimisation.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  /**
+   * Run on everything except static assets. The extension list must cover EVERY
+   * static file type served from /public, not just images: a request that
+   * reaches this middleware pays a live Supabase auth round trip before the file
+   * is served, so leaving fonts out of the list put a network auth call in front
+   * of all eight self-hosted woff2 files on every cold page load.
+   *
+   * Only genuinely static suffixes belong here. No page or API route ends in one
+   * of these extensions, which is what lets the session header set in
+   * updateSession() be trusted downstream — every route that renders is gated.
+   */
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf|otf|eot|css|js|map|json|txt|xml)$).*)",
+  ],
 };

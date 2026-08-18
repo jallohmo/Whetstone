@@ -16,17 +16,20 @@ export default async function EarningsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/advisor/earnings");
 
-  const profile = await prisma.advisorProfile.findUnique({
-    where: { userId: user.id },
-    select: { id: true, stripeAccountId: true },
-  });
+  // Both queries are keyed off the signed-in user, so they run in parallel
+  // rather than waiting on the profile id — one round trip instead of two.
+  const [profile, payments] = await Promise.all([
+    prisma.advisorProfile.findUnique({
+      where: { userId: user.id },
+      select: { id: true, stripeAccountId: true },
+    }),
+    prisma.payment.findMany({
+      where: { booking: { advisor: { userId: user.id } } },
+      orderBy: { booking: { createdAt: "desc" } },
+      include: { booking: { select: { id: true, createdAt: true } } },
+    }),
+  ]);
   if (!profile) redirect("/advisor/apply");
-
-  const payments = await prisma.payment.findMany({
-    where: { booking: { advisorId: profile.id } },
-    orderBy: { booking: { createdAt: "desc" } },
-    include: { booking: { select: { id: true, createdAt: true } } },
-  });
 
   // Payout = gross minus commission. Group by held vs released.
   const rows = payments.map((p) => ({
