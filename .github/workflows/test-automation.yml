@@ -141,13 +141,28 @@ jobs:
       # Build only. Playwright's own `webServer` block starts `npm run start` and
       # waits for it to answer — starting a second server here would collide with
       # it on port 3000, because reuseExistingServer is false under CI.
+      #
+      # NEXT_PUBLIC_* are inlined at BUILD time, so the Supabase browser client
+      # only works in the signed-in spec if they are present here, not merely at
+      # run time. With the secrets unset the build still succeeds and that spec
+      # skips itself.
       - name: Build application
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
 
       - name: Run Playwright tests
         run: npm run test:e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: 'http://localhost:3000'
+          # Only the signed-in checkout spec needs these. Without them it skips
+          # and the anonymous funnel suite runs exactly as before.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+          INSURANCE_COVERAGE_ACTIVE: 'true'
 
       - name: Upload Playwright report
         if: always()

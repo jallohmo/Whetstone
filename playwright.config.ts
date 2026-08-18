@@ -19,6 +19,13 @@ const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000'
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined
 const launchOptions = executablePath ? { executablePath } : undefined
 
+/**
+ * The signed-in check seeds real users and a booking. It is about server state
+ * and configuration, not rendering, so it runs once under its own project rather
+ * than five times across the browser matrix — the cross-browser projects ignore it.
+ */
+const SIGNED_IN_SPEC = '**/checkout.spec.ts'
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
@@ -52,28 +59,41 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: SIGNED_IN_SPEC,
       use: { ...devices['Desktop Chrome'], launchOptions },
     },
 
     {
       name: 'firefox',
+      testIgnore: SIGNED_IN_SPEC,
       use: { ...devices['Desktop Firefox'] },
     },
 
     {
       name: 'webkit',
+      testIgnore: SIGNED_IN_SPEC,
       use: { ...devices['Desktop Safari'] },
     },
 
     // Mobile testing
     {
       name: 'Mobile Chrome',
+      testIgnore: SIGNED_IN_SPEC,
       use: { ...devices['Pixel 5'] },
     },
 
     {
       name: 'Mobile Safari',
+      testIgnore: SIGNED_IN_SPEC,
       use: { ...devices['iPhone 12'] },
+    },
+
+    // Signed-in checkout check. Skips itself when the test project's credentials
+    // aren't in the environment (see e2e/fixtures/checkout-fixtures.ts).
+    {
+      name: 'signed-in',
+      testMatch: SIGNED_IN_SPEC,
+      use: { ...devices['Desktop Chrome'], launchOptions },
     },
   ],
 
@@ -83,5 +103,15 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    /**
+     * INSURANCE_COVERAGE_ACTIVE is passed explicitly because its absence is what
+     * broke checkout in production: the gate compares against the literal string
+     * "true", so unset means "no cover" and payment throws. Setting it here means
+     * the spec asserts the covered path deliberately rather than by accident.
+     */
+    env: {
+      ...(process.env as Record<string, string>),
+      INSURANCE_COVERAGE_ACTIVE: process.env.INSURANCE_COVERAGE_ACTIVE ?? 'true',
+    },
   },
 })
