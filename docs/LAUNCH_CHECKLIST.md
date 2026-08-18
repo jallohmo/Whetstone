@@ -82,11 +82,18 @@ these before the first real build.
 ## 5. Daily.co video (if enabling)
 
 - Set `DAILY_API_KEY` in Vercel (dashboard.daily.co → Developers → API keys).
-- Rooms are created `privacy: "private"` but the code redirects to the room URL
-  **without minting a meeting token**. Private Daily rooms normally require a
-  token to admit users. If testing shows "not allowed to join" errors, either
-  relax the domain's default room privacy or extend `ensureVideoRoom()` in
-  `src/lib/actions/video.ts` to call `POST /v1/meeting-tokens`.
+- Rooms are created `privacy: "private"`, so a room URL admits nobody on its
+  own — every join needs a meeting token. `src/lib/video.ts` mints one per user
+  per join (`POST /v1/meeting-tokens`), scoped to the room, named for the user,
+  expiring with the session, with the advisor as owner. Tokens are never stored.
+  A "You are not allowed to join this meeting" error means token minting failed;
+  check the server logs for `daily: meeting token failed`.
+- The call runs **in-app**: `/bookings/:bookingId/sessions/:sessionId/call`
+  embeds Daily Prebuilt (`@daily-co/daily-js`) rather than handing the user off
+  to daily.co, and routes both parties back to the booking thread when the call
+  ends. Nothing to configure — but if you add a Content-Security-Policy, it
+  needs `frame-src https://*.daily.co`, `connect-src https://*.daily.co
+  wss://*.daily.co` and `media-src blob:`, or the call screen will render empty.
 
 ## 5b. Email — Resend (transactional) + Supabase Auth SMTP
 
