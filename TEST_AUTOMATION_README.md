@@ -42,40 +42,6 @@ Playwright Tests (5 browsers) → HTML Report → Artifact Upload
 - Takes ~15-20 minutes
 - Reports uploaded as artifacts
 
-Two suites:
-
-| Suite | Project(s) | Needs credentials? |
-|---|---|---|
-| `funnel.spec.ts` — anonymous funnel, gating, auth pages | all 5 browsers | No |
-| `checkout.spec.ts` — signed-in client can reach checkout, cover reads active | `signed-in` (Chromium once) | Yes |
-
-#### Enabling the signed-in check
-
-`checkout.spec.ts` guards the outage where `INSURANCE_COVERAGE_ACTIVE` was missing
-from the deployed environment and every payment threw. Checkout is behind a
-session, so the check needs one — which means a **disposable** Supabase project,
-never production. Without these secrets it skips itself and the rest of the suite
-is unaffected, so CI stays green either way.
-
-Add as repository secrets:
-
-| Secret | What it is |
-|---|---|
-| `E2E_SUPABASE_URL` | Test project's API URL |
-| `E2E_SUPABASE_ANON_KEY` | Test project's anon key |
-| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Service-role key — mints confirmed test users |
-| `E2E_DATABASE_URL` | Pooled connection to the test database |
-
-The test database needs the migrations in `supabase/migrations/` applied once.
-No seeding is required: the fixture creates its own taxonomy row, package,
-users and booking, and deletes them afterwards by the ids it captured.
-
-Locally, export the same values (unprefixed) and run:
-
-```bash
-npm run build && npx playwright test --project=signed-in
-```
-
 ### Stage 5: Performance (Main Branch + Nightly)
 ```
 Lighthouse CI → Performance Report → Metrics Tracked

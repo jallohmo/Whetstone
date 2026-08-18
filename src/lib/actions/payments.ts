@@ -28,7 +28,24 @@ export async function createCheckout(formData: FormData) {
   const bookingId = String(formData.get("bookingId") ?? "");
   if (!bookingId) throw new Error("Missing booking id.");
 
-  const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } });
+  // The booking id arrives in the form, so it is caller-controlled: without the
+  // ownership check below, any signed-in user could post someone else's booking
+  // id and have this action act on it — opening a Stripe session against their
+  // booking, or (on the no-Stripe path) writing a held Payment and flipping it
+  // to confirmed. Middleware gating /bookings/* only proves there IS a session.
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+
+  const booking = await prisma.booking.findUniqueOrThrow({
+    where: { id: bookingId },
+    include: { customer: { select: { userId: true } } },
+  });
+  // Paying is the client's alone. Ops refund and resolve elsewhere; the advisor
+  // is the payee, never the payer.
+  if (booking.customer.userId !== current.id) {
+    throw new Error("You don't have access to this booking.");
+  }
+
   if (!platformConfig.insurance.active) {
     throw new Error("Insurance coverage is not active — cannot take payment.");
   }
