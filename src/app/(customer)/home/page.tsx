@@ -22,12 +22,11 @@ import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 import { getLandingData } from "@/lib/featured";
 import { greeting, firstNameOf, dominantCurrency } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
-import { startVideoCall } from "@/lib/actions/video";
 import { platformFormat } from "@/lib/time";
 
 // Screen 1d — Client home. The signed-in landing for clients: a calm summary of
 // their sessions, messages and a review nudge, deep-linking into the detail
-// screens. Read-only except the "Join session" video action.
+// screens. Read-only — "Join session" links through to the in-app call.
 export const dynamic = "force-dynamic";
 
 const dateTime = platformFormat({
@@ -216,15 +215,12 @@ export default async function ClientHomePage() {
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <form action={startVideoCall}>
-                  <input type="hidden" name="sessionId" value={next.id} />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-brand-blue-600 transition hover:-translate-y-px"
-                  >
-                    <Video size={16} strokeWidth={2} /> Join session
-                  </button>
-                </form>
+                <Link
+                  href={`/bookings/${next.bookingId}/sessions/${next.id}/call`}
+                  className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-brand-blue-600 transition hover:-translate-y-px"
+                >
+                  <Video size={16} strokeWidth={2} /> Join session
+                </Link>
                 <Link
                   href={`/bookings/${next.bookingId}/messages`}
                   className="inline-flex items-center gap-2 rounded-md bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/25"

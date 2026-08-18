@@ -1,17 +1,13 @@
 /**
- * Joining a session's video call.
+ * Preparing a session's video call.
  *
  * Daily rooms are created private, so the room URL alone is not joinable —
- * Daily answers "You are not allowed to join this meeting". The join path must
- * therefore mint a meeting token for the person joining and hand it to Daily on
- * the redirect. These tests pin that, plus the authorization decisions the token
- * encodes (who may join at all, and who joins as the owner).
+ * Daily answers "You are not allowed to join this meeting". Whoever joins needs
+ * a meeting token, whether they're redirected to daily.co or (as now) joining
+ * through the embedded call screen. These tests pin the token minting and the
+ * authorization decisions it encodes: who may join at all, and who joins as the
+ * owner.
  */
-
-const mockRedirect = jest.fn((url: string) => {
-  throw new Error(`NEXT_REDIRECT:${url}`);
-});
-jest.mock("next/navigation", () => ({ redirect: (url: string) => mockRedirect(url) }));
 
 const mockSession = { findUnique: jest.fn(), update: jest.fn() };
 jest.mock("@/lib/prisma", () => ({
@@ -30,12 +26,6 @@ jest.mock("react", () => ({
   cache: (fn: unknown) => fn,
 }));
 
-const mockGetCurrentUser = jest.fn();
-jest.mock("@/lib/auth", () => ({
-  ...jest.requireActual("@/lib/auth"),
-  getCurrentUser: () => mockGetCurrentUser(),
-}));
-
 const mockGetAuthorizedBooking = jest.fn();
 jest.mock("@/lib/actions/messages", () => ({
   getAuthorizedBooking: (...args: unknown[]) => mockGetAuthorizedBooking(...args),
@@ -43,12 +33,14 @@ jest.mock("@/lib/actions/messages", () => ({
 
 jest.mock("@/lib/observability", () => ({ reportError: jest.fn() }));
 
-import { startVideoCall } from "@/lib/actions/video";
+import { prepareSessionCall } from "@/lib/video";
+import type { CurrentUser } from "@/lib/auth";
 
 const ROOM_URL = "https://whetstone.daily.co/abc123";
 const SCHEDULED_AT = new Date("2026-09-01T03:00:00.000Z");
+const EXPECTED_EXP = Math.floor(SCHEDULED_AT.getTime() / 1000) + 4 * 3600;
 
-const CUSTOMER = {
+const CUSTOMER: CurrentUser = {
   id: "user_customer",
   email: "client@example.com",
   role: "CUSTOMER",
@@ -57,7 +49,13 @@ const CUSTOMER = {
   lastName: "Client",
   avatarUrl: null,
 };
-const ADVISOR = { ...CUSTOMER, id: "user_advisor", role: "ADVISOR", firstName: "Avery", lastName: "Advisor" };
+const ADVISOR: CurrentUser = {
+  ...CUSTOMER,
+  id: "user_advisor",
+  role: "ADVISOR",
+  firstName: "Avery",
+  lastName: "Advisor",
+};
 
 const BOOKING = {
   id: "booking_1",
@@ -65,25 +63,18 @@ const BOOKING = {
   advisor: { userId: ADVISOR.id },
 };
 
-/** A form post from the "Join call" button. */
-function form(sessionId = "session_1"): FormData {
-  const fd = new FormData();
-  fd.set("sessionId", sessionId);
-  return fd;
-}
-
-/** Runs the action and returns the URL it redirected to. */
-async function joinAndCaptureRedirect(fd = form()): Promise<string> {
-  await expect(startVideoCall(fd)).rejects.toThrow(/NEXT_REDIRECT/);
-  return mockRedirect.mock.calls.at(-1)![0];
-}
-
 let fetchMock: jest.Mock;
+
+/** The token request body Daily was sent, parsed. */
+function tokenRequest() {
+  const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/meeting-tokens"));
+  expect(call).toBeDefined();
+  return { init: call![1], properties: JSON.parse(call![1].body).properties };
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
   process.env.DAILY_API_KEY = "test-key";
-  mockGetCurrentUser.mockResolvedValue(CUSTOMER);
   mockGetAuthorizedBooking.mockResolvedValue(BOOKING);
   mockSession.findUnique.mockResolvedValue({
     id: "session_1",
@@ -101,42 +92,42 @@ beforeEach(() => {
   global.fetch = fetchMock as unknown as typeof fetch;
 });
 
-describe("startVideoCall", () => {
-  it("redirects with a meeting token, not the bare private room URL", async () => {
-    const target = await joinAndCaptureRedirect();
-    expect(target).toBe(`${ROOM_URL}?t=tok_abc`);
+describe("prepareSessionCall", () => {
+  it("returns the room together with a meeting token for the joining user", async () => {
+    const result = await prepareSessionCall("session_1", CUSTOMER);
+
+    expect(result).toEqual({
+      call: {
+        roomUrl: ROOM_URL,
+        token: "tok_abc",
+        bookingId: BOOKING.id,
+        scheduledAt: SCHEDULED_AT,
+        viewerIsAdvisor: false,
+      },
+    });
   });
 
-  it("mints the token for the room being joined, scoped to the joining user", async () => {
-    await joinAndCaptureRedirect();
+  it("mints the token for the room being joined, scoped to that user", async () => {
+    await prepareSessionCall("session_1", CUSTOMER);
 
-    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/meeting-tokens"));
-    expect(call).toBeDefined();
-    const [, init] = call!;
+    const { init, properties } = tokenRequest();
     expect(init.headers.Authorization).toBe("Bearer test-key");
-    const { properties } = JSON.parse(init.body);
     expect(properties.room_name).toBe("abc123");
     expect(properties.user_id).toBe(CUSTOMER.id);
     expect(properties.user_name).toBe("Casey Client");
     // Token dies with the room, and Daily removes anyone still in the call.
-    expect(properties.exp).toBe(Math.floor(SCHEDULED_AT.getTime() / 1000) + 4 * 3600);
+    expect(properties.exp).toBe(EXPECTED_EXP);
     expect(properties.eject_at_token_exp).toBe(true);
   });
 
   it("gives owner rights to the advisor and not the client", async () => {
-    await joinAndCaptureRedirect();
-    const asClient = JSON.parse(
-      fetchMock.mock.calls.find(([u]) => String(u).endsWith("/meeting-tokens"))![1].body,
-    );
-    expect(asClient.properties.is_owner).toBe(false);
+    await prepareSessionCall("session_1", CUSTOMER);
+    expect(tokenRequest().properties.is_owner).toBe(false);
 
     jest.clearAllMocks();
-    mockGetCurrentUser.mockResolvedValue(ADVISOR);
-    await joinAndCaptureRedirect();
-    const asAdvisor = JSON.parse(
-      fetchMock.mock.calls.find(([u]) => String(u).endsWith("/meeting-tokens"))![1].body,
-    );
-    expect(asAdvisor.properties.is_owner).toBe(true);
+    const result = await prepareSessionCall("session_1", ADVISOR);
+    expect(tokenRequest().properties.is_owner).toBe(true);
+    expect("call" in result && result.call.viewerIsAdvisor).toBe(true);
   });
 
   it("creates the room on first join and stores its URL", async () => {
@@ -147,32 +138,60 @@ describe("startVideoCall", () => {
       videoCallUrl: null,
     });
 
-    const target = await joinAndCaptureRedirect();
+    const result = await prepareSessionCall("session_1", CUSTOMER);
 
     const roomCall = fetchMock.mock.calls.find(([u]) => String(u).endsWith("/v1/rooms"));
-    expect(JSON.parse(roomCall![1].body).privacy).toBe("private");
+    const roomBody = JSON.parse(roomCall![1].body);
+    expect(roomBody.privacy).toBe("private");
+    expect(roomBody.properties.exp).toBe(EXPECTED_EXP);
     expect(mockSession.update).toHaveBeenCalledWith({
       where: { id: "session_1" },
       data: { videoCallUrl: ROOM_URL },
     });
-    expect(target).toBe(`${ROOM_URL}?t=tok_abc`);
+    expect("call" in result && result.call.token).toBe("tok_abc");
   });
 
   it("refuses someone who isn't a party on the booking", async () => {
     mockGetAuthorizedBooking.mockResolvedValue(null);
-    await expect(startVideoCall(form())).rejects.toThrow(/don't have access/);
+
+    expect(await prepareSessionCall("session_1", CUSTOMER)).toEqual({ denied: "forbidden" });
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("fails loudly rather than redirecting to an unjoinable room when tokens fail", async () => {
+  it("keeps ops out of the call even though they can read the thread", async () => {
+    await prepareSessionCall("session_1", CUSTOMER);
+    // isOps is hard-coded false: reading a thread is not sitting in on a session.
+    expect(mockGetAuthorizedBooking).toHaveBeenCalledWith(BOOKING.id, CUSTOMER.id, false);
+  });
+
+  it("reports a missing session rather than provisioning a room", async () => {
+    mockSession.findUnique.mockResolvedValue(null);
+
+    expect(await prepareSessionCall("nope", CUSTOMER)).toEqual({ denied: "not-found" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("hands back no room at all when the token can't be minted", async () => {
     fetchMock.mockImplementation(async (url: string) =>
       String(url).endsWith("/meeting-tokens")
         ? { ok: false, status: 400, text: async () => "bad request" }
         : { ok: true, json: async () => ({ url: ROOM_URL }) },
     );
 
-    await expect(startVideoCall(form())).rejects.toThrow(/try again shortly/);
-    expect(mockRedirect).not.toHaveBeenCalled();
+    // A room the user can't enter is worse than none — the screen explains instead.
+    expect(await prepareSessionCall("session_1", CUSTOMER)).toEqual({ denied: "unavailable" });
+  });
+
+  it("treats a missing API key as video being unavailable", async () => {
+    delete process.env.DAILY_API_KEY;
+    mockSession.findUnique.mockResolvedValue({
+      id: "session_1",
+      bookingId: BOOKING.id,
+      scheduledAt: SCHEDULED_AT,
+      videoCallUrl: null,
+    });
+
+    expect(await prepareSessionCall("session_1", CUSTOMER)).toEqual({ denied: "unavailable" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

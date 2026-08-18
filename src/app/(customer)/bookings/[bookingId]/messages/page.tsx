@@ -1,10 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Flag, Video } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { MessageComposer } from "@/components/booking/MessageComposer";
 import { CompletionPanel } from "@/components/booking/CompletionPanel";
-import { startVideoCall } from "@/lib/actions/video";
 import { raiseDispute } from "@/lib/actions/disputes";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
@@ -100,12 +100,12 @@ export default async function MessagesPage({
               </span>
             </span>
           </span>
-          <form action={startVideoCall}>
-            <input type="hidden" name="sessionId" value={nextSession.id} />
-            <button type="submit" className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px">
-              <Video size={16} strokeWidth={2} /> Join video
-            </button>
-          </form>
+          <Link
+            href={`/bookings/${params.bookingId}/sessions/${nextSession.id}/call`}
+            className="inline-flex items-center gap-2 rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white shadow-ink-glow transition duration-DEFAULT ease-soft hover:-translate-y-px"
+          >
+            <Video size={16} strokeWidth={2} /> Join video
+          </Link>
         </Card>
       )}
 

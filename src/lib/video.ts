@@ -1,18 +1,26 @@
-"use server";
-
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser, displayName, type CurrentUser } from "@/lib/auth";
+import { displayName, type CurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
 import { reportError } from "@/lib/observability";
 
-/** When a session's room (and the tokens for it) stop working. */
-function roomExpiry(scheduledAt: Date): number {
+/**
+ * Daily.co plumbing for session video calls.
+ *
+ * Deliberately NOT a "use server" module: nothing here should be reachable as a
+ * server action. The call screen (a server component) is the only caller, and it
+ * authorizes first — see prepareSessionCall below.
+ *
+ * Everything is guarded by DAILY_API_KEY. Without it video is simply
+ * unavailable rather than erroring, so the rest of the app works.
+ */
+
+/** When a session's room — and every token minted for it — stops working. */
+export function roomExpiry(scheduledAt: Date): number {
   return Math.floor(scheduledAt.getTime() / 1000) + 4 * 3600;
 }
 
 /** The Daily room name from a stored room URL (https://x.daily.co/<name>). */
-function roomNameFromUrl(url: string): string | null {
+export function roomNameFromUrl(url: string): string | null {
   try {
     return new URL(url).pathname.replace(/^\//, "") || null;
   } catch {
@@ -21,9 +29,8 @@ function roomNameFromUrl(url: string): string | null {
 }
 
 /**
- * Provision (or reuse) a Daily.co room for a session and store its URL on the
- * Session. Guarded by DAILY_API_KEY — if it's not configured, video is simply
- * unavailable (returns null) rather than erroring, so the rest of the app works.
+ * Provision (or reuse) a Daily room for a session and store its URL on the
+ * Session. Rooms are private: the URL alone admits nobody.
  */
 async function ensureVideoRoom(sessionId: string): Promise<string | null> {
   const session = await prisma.session.findUnique({ where: { id: sessionId } });
@@ -33,7 +40,6 @@ async function ensureVideoRoom(sessionId: string): Promise<string | null> {
   const apiKey = process.env.DAILY_API_KEY;
   if (!apiKey) return null;
 
-  // Room expires a few hours after the scheduled time.
   const exp = roomExpiry(session.scheduledAt);
   const res = await fetch("https://api.daily.co/v1/rooms", {
     method: "POST",
@@ -55,11 +61,10 @@ async function ensureVideoRoom(sessionId: string): Promise<string | null> {
 /**
  * Mint a short-lived Daily meeting token for one person joining one room.
  *
- * Rooms are created with privacy "private", so the bare room URL is not
- * joinable on its own — Daily answers "You are not allowed to join this
- * meeting". The token is what carries our authorization decision (we've already
- * checked the user is a party on the booking) through to Daily, so it is minted
- * per user per join and never stored.
+ * Rooms are private, so the room URL is not joinable on its own — Daily answers
+ * "You are not allowed to join this meeting". The token is what carries our
+ * authorization decision (we've already checked the user is a party on the
+ * booking) through to Daily, so it is minted per user per join and never stored.
  */
 async function createMeetingToken(
   roomUrl: string,
@@ -95,32 +100,50 @@ async function createMeetingToken(
   return body.token ?? null;
 }
 
-/**
- * Screen 8 (A7 / video). Start or join the video call for a session. Only the
- * booking's two parties may join; ops cannot. Redirects to the Daily room with a
- * meeting token for this user.
- */
-export async function startVideoCall(formData: FormData) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Sign in to join the call.");
+/** Why a join couldn't happen, for the call screen to explain. */
+export type CallDenial = "not-found" | "forbidden" | "unavailable";
 
-  const sessionId = String(formData.get("sessionId") ?? "");
+export interface SessionCall {
+  roomUrl: string;
+  /** Scoped to this room and this user, expires with the session. Never stored. */
+  token: string;
+  bookingId: string;
+  scheduledAt: Date;
+  viewerIsAdvisor: boolean;
+}
+
+/**
+ * Authorize a user for a session's call and return everything the client needs
+ * to join it in-app: the room and a meeting token minted for them.
+ *
+ * Only the booking's two parties may join — ops can read a thread but must not
+ * sit in on the call, which is why this passes isOps: false.
+ */
+export async function prepareSessionCall(
+  sessionId: string,
+  user: CurrentUser,
+): Promise<{ call: SessionCall } | { denied: CallDenial }> {
   const session = await prisma.session.findUnique({ where: { id: sessionId } });
-  if (!session) throw new Error("Session not found.");
+  if (!session) return { denied: "not-found" };
 
   const booking = await getAuthorizedBooking(session.bookingId, user.id, false);
-  if (!booking) throw new Error("You don't have access to this call.");
+  if (!booking) return { denied: "forbidden" };
 
-  const url = await ensureVideoRoom(sessionId);
-  if (!url) throw new Error("Video isn't available yet. Please try again shortly.");
+  const roomUrl = await ensureVideoRoom(sessionId);
+  if (!roomUrl) return { denied: "unavailable" };
 
-  const token = await createMeetingToken(
-    url,
-    user,
-    session.scheduledAt,
-    booking.advisor.userId === user.id,
-  );
-  if (!token) throw new Error("Couldn't open the call. Please try again shortly.");
+  const viewerIsAdvisor = booking.advisor.userId === user.id;
+  const token = await createMeetingToken(roomUrl, user, session.scheduledAt, viewerIsAdvisor);
+  // No token means no join — never hand back a room the user can't actually enter.
+  if (!token) return { denied: "unavailable" };
 
-  redirect(`${url}?t=${encodeURIComponent(token)}`);
+  return {
+    call: {
+      roomUrl,
+      token,
+      bookingId: session.bookingId,
+      scheduledAt: session.scheduledAt,
+      viewerIsAdvisor,
+    },
+  };
 }
