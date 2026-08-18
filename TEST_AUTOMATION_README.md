@@ -42,43 +42,6 @@ Playwright Tests (5 browsers) → HTML Report → Artifact Upload
 - Takes ~15-20 minutes
 - Reports uploaded as artifacts
 
-Two suites with different needs:
-
-| Suite | Project(s) | Needs credentials? |
-|---|---|---|
-| `funnel.spec.ts` — anonymous funnel, gating, auth pages | all 5 browsers | No |
-| `booking-journey.spec.ts` — signed-in journey: post → match → book → pay | `journey` (Chromium once) | Yes |
-
-#### Enabling the signed-in journey
-
-The journey seeds real Supabase users and writes real rows, so it needs a
-**disposable** Supabase project — never production. Without these secrets it
-skips itself and the rest of the suite is unaffected, so CI stays green either way.
-
-Add as repository secrets:
-
-| Secret | What it is |
-|---|---|
-| `E2E_SUPABASE_URL` | Test project's API URL |
-| `E2E_SUPABASE_ANON_KEY` | Test project's anon key |
-| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Service-role key — mints confirmed test users |
-| `E2E_DATABASE_URL` | Pooled connection to the test database |
-| `E2E_DIRECT_URL` | Direct connection (migrations/seeding) |
-
-The workflow seeds the taxonomy and packages before running. Each run namespaces
-its users by a random id and deletes everything it created afterwards, scoped by
-the ids it captured — never by pattern-matching live data.
-
-Locally, put the same values in your shell (or `.env.local`) and run:
-
-```bash
-npm run build && npx playwright test --project=journey
-```
-
-Note `INSURANCE_COVERAGE_ACTIVE`: the journey asserts checkout shows *active*
-cover, because its absence is what broke payments in production. The Playwright
-config defaults it to `true` for the app under test.
-
 ### Stage 5: Performance (Main Branch + Nightly)
 ```
 Lighthouse CI → Performance Report → Metrics Tracked
