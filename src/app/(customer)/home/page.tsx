@@ -23,16 +23,17 @@ import { getLandingData } from "@/lib/featured";
 import { greeting, firstNameOf, dominantCurrency } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { startVideoCall } from "@/lib/actions/video";
+import { platformFormat } from "@/lib/time";
 
 // Screen 1d — Client home. The signed-in landing for clients: a calm summary of
 // their sessions, messages and a review nudge, deep-linking into the detail
 // screens. Read-only except the "Join session" video action.
 export const dynamic = "force-dynamic";
 
-const dateTime = new Intl.DateTimeFormat("en-AU", {
+const dateTime = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
-const shortDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = platformFormat({ day: "numeric", month: "short", year: "numeric" });
 
 function relativeDay(when: Date, now: Date): string {
   const days = Math.round((when.getTime() - now.getTime()) / 86_400_000);

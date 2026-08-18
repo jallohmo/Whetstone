@@ -20,17 +20,18 @@ import { prisma } from "@/lib/prisma";
 import { buildEarningsSummary, greeting, firstNameOf } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
+import { platformFormat } from "@/lib/time";
 
 // Screen 9d — Advisor home. The signed-in landing for advisors: a read-mostly
 // summary that deep-links into the detail screens (13 bookings, 14 earnings, 12
 // availability). No new domain models — assembled from existing queries.
 export const dynamic = "force-dynamic";
 
-const dateTime = new Intl.DateTimeFormat("en-AU", {
+const dateTime = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
-const fullDate = new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long" });
-const reviewDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const fullDate = platformFormat({ weekday: "long", day: "numeric", month: "long" });
+const reviewDate = platformFormat({ day: "numeric", month: "short", year: "numeric" });
 
 export default async function AdvisorHomePage() {
   const user = await getCurrentUser();

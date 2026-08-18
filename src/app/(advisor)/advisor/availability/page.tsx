@@ -5,19 +5,20 @@ import { AvailabilityForm } from "@/components/advisor/AvailabilityForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { removeAvailabilitySlot } from "@/lib/actions/availability";
+import { platformFormat } from "@/lib/time";
 
 // Screen 12 — Availability/calendar management (A5). Explicit add/remove
 // (confirm-before-save), large targets, forgiving of mis-clicks.
 export const dynamic = "force-dynamic";
 
-const fmt = new Intl.DateTimeFormat("en-AU", {
+const fmt = platformFormat({
   weekday: "short",
   day: "numeric",
   month: "short",
   hour: "numeric",
   minute: "2-digit",
 });
-const timeFmt = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit" });
+const timeFmt = platformFormat({ hour: "numeric", minute: "2-digit" });
 
 export default async function AvailabilityPage() {
   const user = await getCurrentUser();

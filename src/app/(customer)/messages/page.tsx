@@ -5,12 +5,13 @@ import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { platformFormat } from "@/lib/time";
 
 // Client messages index — one row per booking conversation, latest activity
 // first. The "Messages" nav destination and dashboard "Open" target.
 export const dynamic = "force-dynamic";
 
-const shortDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" });
+const shortDate = platformFormat({ day: "numeric", month: "short", year: "numeric" });
 
 export default async function ClientMessagesPage() {
   const user = await getCurrentUser();

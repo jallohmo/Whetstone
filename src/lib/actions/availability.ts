@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { wallClockToUtc } from "@/lib/time";
 
 /** Resolve the signed-in advisor's profile id, or throw. */
 async function requireAdvisorProfileId(): Promise<string> {
@@ -48,7 +49,12 @@ export async function addAvailabilitySlot(
 
   const startRaw = String(formData.get("startsAt") ?? "");
   const durationMin = parseInt(String(formData.get("durationMin") ?? "60"), 10);
-  const startsAt = new Date(startRaw);
+
+  // The input submits bare wall-clock text with no zone. `new Date(...)` would
+  // read it in the RUNTIME's zone — UTC on Vercel — silently storing an instant
+  // hours from the one the advisor picked. Interpret it in the platform zone,
+  // which is also the zone every screen renders in.
+  const startsAt = wallClockToUtc(startRaw);
 
   if (Number.isNaN(startsAt.getTime())) {
     return { error: "Pick a date and time for the slot." };

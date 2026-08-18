@@ -7,6 +7,7 @@ import {
   SESSION_OUTCOME_LABEL,
   completionReadiness,
 } from "@/lib/booking-status";
+import { platformFormat } from "@/lib/time";
 
 /**
  * The completion controls on a booking thread, rendered for whichever party has
@@ -22,7 +23,7 @@ import {
  * Server component: plain form actions, no client JS.
  */
 
-const dateTime = new Intl.DateTimeFormat("en-AU", {
+const dateTime = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
 

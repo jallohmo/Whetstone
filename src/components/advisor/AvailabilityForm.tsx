@@ -8,6 +8,7 @@ import {
   addAvailabilitySlot,
   type AvailabilityFormState,
 } from "@/lib/actions/availability";
+import { utcToWallClock, zoneLabel } from "@/lib/time";
 
 /**
  * Screen 12 — the add-a-slot form, split out of the page so it can be a client
@@ -30,13 +31,17 @@ export function AvailabilityForm() {
   );
   const formRef = useRef<HTMLFormElement>(null);
   const [min, setMin] = useState<string | undefined>(undefined);
+  // Stable across server and client render: the zone is fixed, so both resolve
+  // the same abbreviation for the same instant.
+  const zone = zoneLabel();
 
-  // Computed on the client, because "now" for the advisor is their clock, not the
-  // server's. Set after mount so the server and first client render agree.
+  // "Now" expressed in the platform zone — the same zone the server interprets
+  // the submitted value in, and the one every screen renders. Computing it from
+  // the browser's own zone instead would disagree with the server for anyone not
+  // sitting in that zone. Set after mount so the first client render matches the
+  // server's HTML.
   useEffect(() => {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-    setMin(local.toISOString().slice(0, 16));
+    setMin(utcToWallClock(new Date()));
   }, []);
 
   // Clear the fields only once a slot has actually been added, so a rejected
@@ -63,7 +68,10 @@ export function AvailabilityForm() {
             htmlFor="startsAt"
             className="mb-1.5 block text-sm font-semibold text-ink"
           >
-            Date &amp; start time
+            Date &amp; start time{" "}
+            {/* Named explicitly: an advisor outside this zone would otherwise
+                reasonably assume the field means their own clock. */}
+            <span className="font-normal text-gray-500">({zone})</span>
           </label>
           <div className="relative">
             <CalendarClock

@@ -34,6 +34,9 @@ KEYS=(
   EMAIL_REPLY_TO
   OPS_ALERT_EMAIL
   NEXT_PUBLIC_SITE_URL
+  # Reference zone for every wall-clock time. NEXT_PUBLIC_, so it is inlined at
+  # BUILD time — changing it needs a redeploy, not just a redeploy of env.
+  NEXT_PUBLIC_PLATFORM_TIMEZONE
   # Cron + video.
   CRON_SECRET
   DAILY_API_KEY

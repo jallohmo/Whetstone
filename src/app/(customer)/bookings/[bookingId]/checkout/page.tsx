@@ -8,6 +8,7 @@ import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNo
 import { createCheckout } from "@/lib/actions/payments";
 import { stripeEnabled } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { platformFormat } from "@/lib/time";
 
 // Screen 6 — Payment/checkout (A6). Insurance coverage is visible here, not
 // buried. confirmBooking creates the held Payment, sets the coverage flag, and
@@ -29,7 +30,7 @@ export default async function CheckoutPage({
   const advisorName = booking.advisor.user.email.split("@")[0];
   const firstSession = booking.sessions[0];
   const when = firstSession
-    ? new Intl.DateTimeFormat("en-AU", {
+    ? platformFormat({
         weekday: "short",
         day: "numeric",
         month: "short",
