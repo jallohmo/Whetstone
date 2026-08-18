@@ -7,12 +7,13 @@ import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/cn";
 import { CUSTOMER_STATUS_LABEL } from "@/lib/booking-status";
+import { platformFormat } from "@/lib/time";
 
 // Client bookings list — the "Bookings" nav destination and the "View all"
 // target from the home dashboard. Read-only; each row opens the booking thread.
 export const dynamic = "force-dynamic";
 
-const dateTime = new Intl.DateTimeFormat("en-AU", {
+const dateTime = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
 

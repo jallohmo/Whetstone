@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { BoundedScopeSummary } from "@/components/shared/BoundedScopeSummary";
 import { InsuranceCoverageNotice } from "@/components/shared/InsuranceCoverageNotice";
 import { prisma } from "@/lib/prisma";
+import { platformFormat } from "@/lib/time";
 
 // Screen 7 — Booking confirmation (A4/A6). Plain-spoken copy, prep guidance.
 export default async function BookingConfirmedPage({
@@ -26,7 +27,7 @@ export default async function BookingConfirmedPage({
   const advisorName = booking.advisor.user.email.split("@")[0];
   const firstSession = booking.sessions[0];
   const when = firstSession
-    ? new Intl.DateTimeFormat("en-AU", {
+    ? platformFormat({
         weekday: "long",
         day: "numeric",
         month: "long",

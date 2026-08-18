@@ -7,13 +7,14 @@ import { IndustryTag } from "@/components/shared/IndustryTag";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ADVISOR_STATUS_LABEL, LIVE_BOOKING_STATUSES } from "@/lib/booking-status";
+import { platformFormat } from "@/lib/time";
 
 // Screen 13 — Advisor booking inbox. Each row surfaces the customer's stated
 // challenge + industry UP FRONT (from their latest need) so the advisor can prepare,
 // plus the session time.
 export const dynamic = "force-dynamic";
 
-const fmt = new Intl.DateTimeFormat("en-AU", {
+const fmt = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
 

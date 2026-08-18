@@ -141,13 +141,46 @@ jobs:
       # Build only. Playwright's own `webServer` block starts `npm run start` and
       # waits for it to answer — starting a second server here would collide with
       # it on port 3000, because reuseExistingServer is false under CI.
+      #
+      # NEXT_PUBLIC_* are inlined at BUILD time, so the Supabase browser client
+      # only works in the signed-in journey if they are present here, not merely
+      # at run time. When the secrets are unset the build still succeeds and the
+      # journey spec skips itself.
       - name: Build application
         run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.E2E_DIRECT_URL }}
+
+      # Reference data the journey relies on (the industry taxonomy and packages).
+      # Skipped, not failed, when no test database is configured.
+      - name: Seed reference data
+        env:
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.E2E_DIRECT_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "No E2E database configured — skipping seed. The journey spec skips itself too."
+            exit 0
+          fi
+          npm run db:seed
 
       - name: Run Playwright tests
         run: npm run test:e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: 'http://localhost:3000'
+          # Everything below is only needed by the signed-in journey. Without them
+          # it skips and the anonymous funnel suite runs as before.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.E2E_DIRECT_URL }}
+          # The variable whose absence broke checkout in production. Set explicitly
+          # so the journey walks the covered path.
+          INSURANCE_COVERAGE_ACTIVE: 'true'
 
       - name: Upload Playwright report
         if: always()

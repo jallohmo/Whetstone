@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/cn";
+import { platformFormat } from "@/lib/time";
 
 // Screen 8 — In-session messaging (A7). Simple thread, booking-parties only.
 // Plus a "Join video" affordance for the scheduled session (Daily.co).
@@ -95,7 +96,7 @@ export default async function MessagesPage({
               <span className="mx-1.5 text-gray-300">·</span>
               Session on{" "}
               <span className="font-semibold text-ink">
-                {new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(nextSession.scheduledAt)}
+                {platformFormat({ weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(nextSession.scheduledAt)}
               </span>
             </span>
           </span>

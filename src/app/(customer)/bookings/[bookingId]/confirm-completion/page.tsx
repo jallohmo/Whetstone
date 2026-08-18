@@ -11,6 +11,7 @@ import {
   SESSION_OUTCOME_LABEL,
   COMPLETION_AUTO_ACCEPT_DAYS,
 } from "@/lib/booking-status";
+import { platformFormat } from "@/lib/time";
 
 /**
  * Client-side completion confirmation. The advisor has marked the work done and
@@ -20,8 +21,8 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-const dateOnly = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", year: "numeric" });
-const dateTime = new Intl.DateTimeFormat("en-AU", {
+const dateOnly = platformFormat({ day: "numeric", month: "short", year: "numeric" });
+const dateTime = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
 

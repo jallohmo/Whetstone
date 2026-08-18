@@ -6,12 +6,13 @@ import { RadioCard } from "@/components/ui/selection";
 import { Money } from "@/components/shared/Money";
 import { createBooking } from "@/lib/actions/bookings";
 import { prisma } from "@/lib/prisma";
+import { platformFormat } from "@/lib/time";
 
 // Screen 5 — Booking flow (A4, A5). One form: pick a bounded-scope package AND a
 // time from the advisor's real availability. No open-ended hourly option.
 export const dynamic = "force-dynamic";
 
-const slotFmt = new Intl.DateTimeFormat("en-AU", {
+const slotFmt = platformFormat({
   weekday: "short",
   day: "numeric",
   month: "short",

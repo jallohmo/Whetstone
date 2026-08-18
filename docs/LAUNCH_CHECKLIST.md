@@ -31,6 +31,7 @@ Complete list of what the code actually reads (`process.env.*` + Prisma `env()`)
 | `NEXT_PUBLIC_DEFAULT_CURRENCY` | Fallback currency (code default: AUD) |
 | `PLATFORM_COMMISSION_BPS` | Commission (code default: 1500 = 15%) |
 | `INSURANCE_COVERAGE_ACTIVE`, `INSURANCE_COVERAGE_STATEMENT` | Insurance statement config |
+| `NEXT_PUBLIC_PLATFORM_TIMEZONE` | ⚠️ build-time inlined. Reference zone for every wall-clock time (default `Australia/Sydney`) |
 
 > `KYC_PROVIDER` appears in `.env.example` but is **not read anywhere in the code**
 > yet — reserved for later, safe to skip. (`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` is

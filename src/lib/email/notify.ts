@@ -20,6 +20,7 @@ import {
   reviewInviteEmail,
   sessionReminderEmail,
 } from "./templates";
+import { platformFormat } from "@/lib/time";
 
 /**
  * Notification dispatch. Each function loads what it needs, respects the
@@ -28,7 +29,7 @@ import {
  * safe to `await` from a server action without ever breaking the mutation.
  */
 
-const when = new Intl.DateTimeFormat("en-AU", {
+const when = platformFormat({
   weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
 });
 
@@ -311,7 +312,7 @@ export async function notifySessionReminder(sessionId: string): Promise<void> {
   }
 }
 
-const dayMonth = new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long" });
+const dayMonth = platformFormat({ weekday: "long", day: "numeric", month: "long" });
 
 /** Booking + parties, the shape every completion email needs. */
 function completionSelect() {
