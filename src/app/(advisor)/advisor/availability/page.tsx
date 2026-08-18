@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { CalendarClock, ChevronDown, Plus, TriangleAlert, Trash2 } from "lucide-react";
-import { PageHeader, Card, Button } from "@/components/ui";
+import { CalendarClock, TriangleAlert, Trash2 } from "lucide-react";
+import { PageHeader, Card } from "@/components/ui";
+import { AvailabilityForm } from "@/components/advisor/AvailabilityForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { addAvailabilitySlot, removeAvailabilitySlot } from "@/lib/actions/availability";
+import { removeAvailabilitySlot } from "@/lib/actions/availability";
 
 // Screen 12 — Availability/calendar management (A5). Explicit add/remove
 // (confirm-before-save), large targets, forgiving of mis-clicks.
@@ -52,39 +53,7 @@ export default async function AvailabilityPage() {
 
       <Card className="mb-page-gap">
         <h3 className="mb-4 text-h3 text-ink">Add a slot</h3>
-        <form action={addAvailabilitySlot} className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-ink">Date &amp; start time</label>
-            <div className="relative">
-              <CalendarClock size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="datetime-local"
-                name="startsAt"
-                required
-                className="rounded-sm border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-body text-ink outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-ink">Length</label>
-            <div className="relative">
-              <select
-                name="durationMin"
-                defaultValue="60"
-                className="w-full appearance-none rounded-sm border border-gray-200 bg-white py-2.5 pl-3 pr-10 text-body text-ink outline-none transition duration-DEFAULT ease-soft focus:border-brand-blue focus:shadow-focus"
-              >
-                <option value="30">30 minutes</option>
-                <option value="60">60 minutes</option>
-                <option value="90">90 minutes</option>
-              </select>
-              <ChevronDown size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            </div>
-          </div>
-          <Button type="submit">
-            <Plus size={16} strokeWidth={2} />
-            Add slot
-          </Button>
-        </form>
+        <AvailabilityForm />
       </Card>
 
       <h3 className="mb-3 text-h3 text-ink">Upcoming slots</h3>
