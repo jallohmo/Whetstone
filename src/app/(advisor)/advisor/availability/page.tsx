@@ -24,16 +24,23 @@ export default async function AvailabilityPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/advisor/availability");
 
+  // Profile and slots in ONE query rather than two serial ones: the slot lookup
+  // only needed the profile id, so fetching it through the relation removes a
+  // full database round trip from the critical path.
   const profile = await prisma.advisorProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true, verificationStatus: true },
+    select: {
+      id: true,
+      verificationStatus: true,
+      availabilitySlots: {
+        where: { startsAt: { gte: new Date() } },
+        orderBy: { startsAt: "asc" },
+      },
+    },
   });
   if (!profile) redirect("/advisor/apply");
 
-  const slots = await prisma.availabilitySlot.findMany({
-    where: { advisorId: profile.id, startsAt: { gte: new Date() } },
-    orderBy: { startsAt: "asc" },
-  });
+  const slots = profile.availabilitySlots;
 
   return (
     <div>

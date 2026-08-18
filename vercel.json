@@ -3,6 +3,7 @@
   "framework": "nextjs",
   "buildCommand": "prisma generate && next build",
   "installCommand": "npm install",
+  "regions": ["syd1"],
   "crons": [
     { "path": "/api/cron/session-reminders", "schedule": "0 9 * * *" },
     { "path": "/api/cron/booking-lifecycle", "schedule": "30 9 * * *" }

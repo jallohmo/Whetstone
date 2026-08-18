@@ -67,20 +67,24 @@ export default async function AdvisorApplyPage() {
     );
   }
 
-  // Already applied -> show status instead of re-collecting everything.
-  const existing = await prisma.advisorProfile.findUnique({
-    where: { userId: user.id },
-    select: { verificationStatus: true },
-  });
+  // Independent queries, so they run in parallel — one round trip instead of
+  // two. The taxonomy is fetched even on the redirect path, which costs nothing
+  // extra: total latency is the slower of the two, not the sum.
+  const [existing, industries] = await Promise.all([
+    // Already applied -> show status instead of re-collecting everything.
+    prisma.advisorProfile.findUnique({
+      where: { userId: user.id },
+      select: { verificationStatus: true },
+    }),
+    prisma.industryTaxonomy.findMany({
+      where: { parentId: null },
+      orderBy: { name: "asc" },
+      include: { children: { orderBy: { name: "asc" } } },
+    }),
+  ]);
   if (existing && existing.verificationStatus !== "NEEDS_MORE_INFO") {
     redirect("/advisor/verification-status");
   }
-
-  const industries = await prisma.industryTaxonomy.findMany({
-    where: { parentId: null },
-    orderBy: { name: "asc" },
-    include: { children: { orderBy: { name: "asc" } } },
-  });
 
   return (
     <div>
