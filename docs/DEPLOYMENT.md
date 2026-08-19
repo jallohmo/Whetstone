@@ -206,6 +206,74 @@ appears in **Authentication → Users** and, via the `handle_new_user` trigger, 
   expires every LinkedIn sign-in fails at the provider; regenerate it on the
   **Auth** tab and re-paste it into Supabase. Put a reminder in the calendar.
 
+### Custom auth domain — what the OAuth consent screen shows
+
+The LinkedIn (and Google) consent screen names the host the user is about to be
+redirected to, which is the **Supabase** host, not `app.whetstone.au`. Out of the
+box that reads:
+
+> You will be redirected to https://yywcerybuaxndsvdkjiw.supabase.co
+
+A random 20-character project ref on an unfamiliar domain, shown at the moment
+the user decides whether to hand over their LinkedIn identity. On a marketplace
+selling verification and insurance, that is worth fixing before social sign-in
+goes public — and it is far cheaper to fix while there are no OAuth users yet.
+
+Two mutually-exclusive options (a project can have one or the other):
+
+| | Custom domain | Vanity subdomain |
+|---|---|---|
+| User sees | `auth.whetstone.au` | `whetstone.supabase.co` |
+| Cost | $0.0137/hr ≈ **$10/mo per project**, add-on, **not** covered by the spend cap | Free, but needs a paid plan (Pro/Team/Enterprise) |
+| Configured via | Dashboard **or** CLI | CLI only, flagged experimental |
+| Old `<ref>.supabase.co` after activation | Keeps working — cut over at your own pace | Treat as broken (see caveat below) |
+
+**Recommended: the custom domain.** $10/mo is noise against a consumer-facing
+trust signal, and the old host staying live makes the cutover reversible and
+zero-downtime.
+
+> **Vanity-subdomain caveat.** The Supabase docs contradict themselves: the
+> Custom Domains guide says the project domain "remains active", but the
+> `vanity-subdomains activate` CLI reference says that after activation "your
+> project's auth services will no longer function on the
+> {project-ref}.{supabase-domain} hostname". Assume auth on the old host breaks,
+> and update every provider console **before** activating.
+
+**Cutover — custom domain at `auth.whetstone.au`**
+
+Nothing in the app changes: `src/lib/supabase/{client,server,middleware}.ts` all
+read `NEXT_PUBLIC_SUPABASE_URL`, so this is env + dashboards only.
+
+1. Dashboard → **Project Settings → General → Custom Domains** (or the CLI:
+   `supabase domains create --project-ref yywcerybuaxndsvdkjiw --custom-hostname auth.whetstone.au`).
+   Subdomains only — the apex `whetstone.au` is not supported.
+2. Add the DNS records with a **low TTL**: a `CNAME` for `auth.whetstone.au` →
+   `yywcerybuaxndsvdkjiw.supabase.co.`, and the `_acme-challenge.auth` `TXT`
+   record the previous step returns. Some registrars append the zone name — if
+   so, enter `auth` rather than `auth.whetstone.au`.
+3. `supabase domains reverify --project-ref yywcerybuaxndsvdkjiw`. May need a few
+   attempts while DNS propagates; certificate issuance can take up to 30 minutes.
+4. **Before activating**, add the new callback to each provider console
+   **alongside** the existing one — Supabase Auth advertises the new host the
+   instant the domain activates:
+   - LinkedIn **Auth** tab and Google Cloud **Credentials**:
+     `https://auth.whetstone.au/auth/v1/callback` **and**
+     `https://yywcerybuaxndsvdkjiw.supabase.co/auth/v1/callback`.
+5. `supabase domains activate --project-ref yywcerybuaxndsvdkjiw`.
+6. Set `NEXT_PUBLIC_SUPABASE_URL=https://auth.whetstone.au` in Vercel and
+   **redeploy** — it is build-time inlined (Launch checklist §4). Update
+   `.env.example` to match.
+7. After traffic has settled on the new host, remove the old callback from the
+   LinkedIn and Google consoles, and update the callback URLs in §5 above.
+
+Storage and Edge Functions move with it (`https://auth.whetstone.au/storage/v1/…`),
+which is why a neutral name like `api.` or `auth.` beats anything auth-specific
+if you expect to serve public storage URLs from it later.
+
+The one documented hazard of this migration is SAML: activation changes the
+project's `EntityID` and breaks existing identity providers. **Whetstone has no
+SAML SSO**, so it does not apply here.
+
 ## 6. Payments (Stripe Connect)
 
 Payments use **Stripe Connect** (separate charges & transfers): the customer pays
