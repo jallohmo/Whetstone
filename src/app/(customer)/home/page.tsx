@@ -20,9 +20,14 @@ import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
 import { getLandingData } from "@/lib/featured";
-import { greeting, firstNameOf, dominantCurrency } from "@/lib/dashboard";
-import { DEFAULT_CURRENCY } from "@/lib/currency";
-import { platformFormat } from "@/lib/time";
+import {
+  greeting,
+  firstNameOf,
+  summariseSpend,
+  SPENT_PAYMENT_STATUSES,
+  type SpendRow,
+} from "@/lib/dashboard";
+import { platformFormat, zonedYearStart } from "@/lib/time";
 
 // Screen 1d — Client home. The signed-in landing for clients: a calm summary of
 // their sessions, messages and a review nudge, deep-linking into the detail
@@ -55,7 +60,8 @@ export default async function ClientHomePage() {
   if (user.role === "OPS_ADMIN") redirect("/ops");
 
   const now = new Date();
-  const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  // Calendar year in the platform's zone, not UTC — see zonedYearStart.
+  const yearStart = zonedYearStart(now);
 
   const [profile, landing] = await Promise.all([
     prisma.customerProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
@@ -69,7 +75,7 @@ export default async function ClientHomePage() {
   let threads: Awaited<ReturnType<typeof loadThreads>> = [];
   let needs: Awaited<ReturnType<typeof loadNeeds>> = [];
   let advisorsWorkedWith = 0;
-  let ytd: { amountCents: number; currency: string }[] = [];
+  let ytd: SpendRow[] = [];
 
   if (profile) {
     const cid = profile.id;
@@ -83,10 +89,30 @@ export default async function ClientHomePage() {
       prisma.booking
         .findMany({ where: { customerId: cid }, select: { advisorId: true }, distinct: ["advisorId"] })
         .then((r) => r.length),
-      prisma.payment.findMany({
-        where: { booking: { customerId: cid, createdAt: { gte: yearStart } } },
-        select: { amountCents: true, currency: true },
-      }),
+      // Money and sessions both come off THIS query, so the two halves of the
+      // card can't disagree. Filtering on payment status excludes refunds and
+      // bookings that were never paid for (cancelled, still pending) — a
+      // cancelled booking's session used to land in the count while its absent
+      // payment stayed out of the total.
+      prisma.payment
+        .findMany({
+          where: {
+            status: { in: [...SPENT_PAYMENT_STATUSES] },
+            booking: { customerId: cid, createdAt: { gte: yearStart } },
+          },
+          select: {
+            amountCents: true,
+            currency: true,
+            booking: { select: { sessionCount: true } },
+          },
+        })
+        .then((rows) =>
+          rows.map((r) => ({
+            amountCents: r.amountCents,
+            currency: r.currency,
+            sessionCount: r.booking.sessionCount,
+          })),
+        ),
     ]);
   }
 
@@ -95,9 +121,12 @@ export default async function ClientHomePage() {
   const next = upcoming[0];
   const reviewsToLeave = pendingReview ? 1 : 0;
 
-  const ytdCurrency = ytd.length ? dominantCurrency(ytd) : DEFAULT_CURRENCY;
-  const ytdMinor = ytd.filter((p) => p.currency === ytdCurrency).reduce((s, p) => s + p.amountCents, 0);
-  const ytdSessions = past.length + upcoming.length;
+  // Both numbers from one set of rows — see summariseSpend. The session count
+  // is deliberately NOT past.length + upcoming.length: those loaders are capped
+  // (take 3 / take 5) for the lists they render, so reusing their lengths pinned
+  // the total at 8 forever, and they filter booking status differently from each
+  // other.
+  const spend = summariseSpend(ytd);
 
   const matchesReady = needs.filter((n) => n.released && n.advisorCount > 0).length;
 
@@ -388,10 +417,10 @@ export default async function ClientHomePage() {
           <Card>
             <Eyebrow>This year</Eyebrow>
             <p className="mt-2">
-              <Money amountMinor={ytdMinor} currency={ytdCurrency} className="text-h2 font-bold text-ink" />
+              <Money amountMinor={spend.totalMinor} currency={spend.currency} className="text-h2 font-bold text-ink" />
             </p>
             <p className="mt-1 text-sm text-gray-500">
-              across {ytdSessions} {ytdSessions === 1 ? "session" : "sessions"}
+              across {spend.sessions} {spend.sessions === 1 ? "session" : "sessions"}
             </p>
           </Card>
         </div>

@@ -120,6 +120,25 @@ export function utcToWallClock(
 }
 
 /**
+ * Midnight on 1 January, in `timeZone`, for the year `at` falls in — as a UTC
+ * instant ready to compare against a stored timestamp.
+ *
+ * `new Date(Date.UTC(year, 0, 1))` is the trap this replaces. It marks the start
+ * of the UTC year, so for a zone ahead of UTC the first hours of 1 January
+ * locally still belong to the previous UTC year: a Sydney client's New Year's Day
+ * morning booking drops out of their "this year" total until 10 or 11am. The year
+ * is read in the zone too, so on 1 January at 00:30 in Sydney this returns that
+ * same midnight rather than the one eleven months ahead.
+ */
+export function zonedYearStart(
+  at: Date = new Date(),
+  timeZone: string = PLATFORM_TIMEZONE,
+): Date {
+  const year = utcToWallClock(at, timeZone).slice(0, 4);
+  return wallClockToUtc(`${year}-01-01T00:00`, timeZone);
+}
+
+/**
  * Build a formatter pinned to the platform zone. Every date rendered anywhere in
  * the app should come through here — an Intl.DateTimeFormat without an explicit
  * `timeZone` silently uses the server's, which is the bug this module exists for.
