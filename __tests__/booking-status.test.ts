@@ -13,6 +13,9 @@ import {
   completionReadiness,
   autoAcceptDeadline,
   paymentExpiryDeadline,
+  isResumedCheckout,
+  checkoutReadiness,
+  CHECKOUT_RESUME_AFTER_MINUTES,
 } from "@/lib/booking-status";
 
 /**
@@ -165,5 +168,98 @@ describe("pending-payment windows", () => {
 
   it("labels the unpaid state for the client", () => {
     expect(CUSTOMER_STATUS_LABEL.pending_payment).toBe("Awaiting payment");
+  });
+});
+
+
+const MIN = 60_000;
+const HOUR = 3_600_000;
+
+/**
+ * The checkout gate. checkoutReadiness is the last thing standing between a
+ * client and a charge for a session that has already happened, and it is shared
+ * by the screen and the server action — so these pin the refusals rather than
+ * the happy path.
+ */
+describe("checkoutReadiness", () => {
+  const now = new Date("2026-03-02T09:00:00.000Z");
+  const justCreated = new Date(now.getTime() - 5 * MIN);
+  const soon = new Date(now.getTime() + 2 * HOUR);
+
+  it("lets a fresh booking with a future session through", () => {
+    expect(checkoutReadiness("pending_payment", justCreated, soon, now)).toEqual({ ready: true });
+  });
+
+  it("allows payment when no session is scheduled yet", () => {
+    expect(checkoutReadiness("pending_payment", justCreated, null, now)).toEqual({ ready: true });
+  });
+
+  it("refuses once the session's start time has passed", () => {
+    const elapsed = new Date(now.getTime() - MIN);
+    const r = checkoutReadiness("pending_payment", justCreated, elapsed, now);
+    expect(r.ready).toBe(false);
+    expect(r.kind).toBe("session_elapsed");
+  });
+
+  it("refuses at the exact moment the session starts", () => {
+    const r = checkoutReadiness("pending_payment", justCreated, now, now);
+    expect(r.ready).toBe(false);
+    expect(r.kind).toBe("session_elapsed");
+  });
+
+  it("refuses a booking past its expiry window, even with a future session", () => {
+    const stale = new Date(now.getTime() - (PAYMENT_EXPIRY_HOURS + 1) * HOUR);
+    const r = checkoutReadiness("pending_payment", stale, soon, now);
+    expect(r.ready).toBe(false);
+    expect(r.kind).toBe("window_elapsed");
+  });
+
+  it("reports an elapsed session ahead of an elapsed window", () => {
+    // Both are true here; the session is the more specific thing to tell them.
+    const stale = new Date(now.getTime() - (PAYMENT_EXPIRY_HOURS + 1) * HOUR);
+    const elapsed = new Date(now.getTime() - MIN);
+    expect(checkoutReadiness("pending_payment", stale, elapsed, now).kind).toBe("session_elapsed");
+  });
+
+  it("refuses anything that isn't awaiting payment", () => {
+    for (const status of ["confirmed", "in_progress", "completed", "cancelled"]) {
+      const r = checkoutReadiness(status, justCreated, soon, now);
+      expect(r.ready).toBe(false);
+      expect(r.kind).toBe("not_payable");
+    }
+  });
+
+  it("always explains itself when it refuses", () => {
+    const stale = new Date(now.getTime() - (PAYMENT_EXPIRY_HOURS + 1) * HOUR);
+    for (const r of [
+      checkoutReadiness("confirmed", justCreated, soon, now),
+      checkoutReadiness("pending_payment", justCreated, new Date(now.getTime() - MIN), now),
+      checkoutReadiness("pending_payment", stale, soon, now),
+    ]) {
+      expect(r.reason).toBeTruthy();
+    }
+  });
+});
+
+describe("isResumedCheckout", () => {
+  const now = new Date("2026-03-02T09:00:00.000Z");
+
+  it("treats the booking funnel as not resumed", () => {
+    expect(isResumedCheckout(new Date(now.getTime() - 10_000), now)).toBe(false);
+  });
+
+  it("treats a return from the reminder email as resumed", () => {
+    expect(isResumedCheckout(new Date(now.getTime() - PAYMENT_REMINDER_HOURS * HOUR), now)).toBe(true);
+  });
+
+  it("flips at the threshold", () => {
+    const at = new Date(now.getTime() - CHECKOUT_RESUME_AFTER_MINUTES * MIN);
+    const justBefore = new Date(at.getTime() + 1_000);
+    expect(isResumedCheckout(at, now)).toBe(true);
+    expect(isResumedCheckout(justBefore, now)).toBe(false);
+  });
+
+  it("resumes well before the reminder goes out, so that email never lands on the funnel view", () => {
+    expect(CHECKOUT_RESUME_AFTER_MINUTES * MIN).toBeLessThan(PAYMENT_REMINDER_HOURS * HOUR);
   });
 });
