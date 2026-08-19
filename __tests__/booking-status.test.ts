@@ -8,8 +8,11 @@ import {
   ADVISOR_STATUS_LABEL,
   COMPLETION_REMINDER_DAYS,
   COMPLETION_AUTO_ACCEPT_DAYS,
+  PAYMENT_REMINDER_HOURS,
+  PAYMENT_EXPIRY_HOURS,
   completionReadiness,
   autoAcceptDeadline,
+  paymentExpiryDeadline,
 } from "@/lib/booking-status";
 
 /**
@@ -131,5 +134,36 @@ describe("auto-accept window", () => {
   it("puts the deadline the configured number of days after the advisor marked it", () => {
     const marked = new Date("2026-03-01T00:00:00.000Z");
     expect(autoAcceptDeadline(marked).toISOString()).toBe("2026-03-08T00:00:00.000Z");
+  });
+});
+
+
+/**
+ * The unpaid-booking windows. An abandoned checkout holds the advisor's
+ * availability slot until the sweep cancels it, so the ordering below is the
+ * whole safety property: the client must be nudged, and given time to act on the
+ * nudge, before anything is cancelled underneath them.
+ */
+describe("pending-payment windows", () => {
+  it("nudges well before it expires", () => {
+    expect(PAYMENT_REMINDER_HOURS).toBeLessThan(PAYMENT_EXPIRY_HOURS);
+  });
+
+  it("leaves the client time to act on the reminder", () => {
+    expect(PAYMENT_EXPIRY_HOURS - PAYMENT_REMINDER_HOURS).toBeGreaterThanOrEqual(12);
+  });
+
+  it("counts the expiry deadline from when the booking was created", () => {
+    const createdAt = new Date("2026-03-01T09:00:00.000Z");
+    expect(paymentExpiryDeadline(createdAt).toISOString()).toBe("2026-03-02T09:00:00.000Z");
+  });
+
+  it("never treats an unpaid booking as paid", () => {
+    expect(PAID_BOOKING_STATUSES).not.toContain("pending_payment");
+    expect(LIVE_BOOKING_STATUSES).not.toContain("pending_payment");
+  });
+
+  it("labels the unpaid state for the client", () => {
+    expect(CUSTOMER_STATUS_LABEL.pending_payment).toBe("Awaiting payment");
   });
 });

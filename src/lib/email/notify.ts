@@ -3,12 +3,17 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { displayName } from "@/lib/auth";
 import { resolvePrefs } from "@/lib/notifications";
-import { autoAcceptDeadline, IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
+import {
+  autoAcceptDeadline,
+  paymentExpiryDeadline,
+  IN_DELIVERY_BOOKING_STATUSES,
+} from "@/lib/booking-status";
 import { splitCommission, formatMoney } from "@/lib/currency";
 import { reportError } from "@/lib/observability";
 import { emailEnabled, sendEmail } from "./client";
 import {
   bookingConfirmedEmail,
+  bookingExpiredEmail,
   completionAwaitingConfirmationEmail,
   completionReminderEmail,
   matchesReadyEmail,
@@ -16,6 +21,7 @@ import {
   newBookingEmail,
   newMessageEmail,
   opsDisputeAlertEmail,
+  paymentReminderEmail,
   payoutReleasedEmail,
   reviewInviteEmail,
   sessionReminderEmail,
@@ -108,6 +114,84 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     }
   } catch (err) {
     reportError("notifyBookingConfirmed", err, { bookingId });
+  }
+}
+
+/** What both unpaid-booking emails need to address the client and name the booking. */
+function pendingPaymentSelect() {
+  return {
+    scopeDescription: true,
+    priceCents: true,
+    currency: true,
+    createdAt: true,
+    sessions: { orderBy: { scheduledAt: "asc" }, take: 1, select: { scheduledAt: true } },
+    customer: {
+      select: { user: { select: { email: true, firstName: true, lastName: true, fullName: true } } },
+    },
+    advisor: {
+      select: { user: { select: { email: true, firstName: true, lastName: true, fullName: true } } },
+    },
+  } as const;
+}
+
+/**
+ * To the client: they never finished checkout, so the booking isn't confirmed.
+ * Deliberately NOT preference-gated — "bookingUpdates" covers news about a
+ * booking that exists, and this is the only thing standing between the client
+ * and a session they think they've booked. The expiry sweep runs regardless, so
+ * suppressing this would cancel their booking with no warning at all.
+ */
+export async function notifyPaymentReminder(bookingId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: pendingPaymentSelect(),
+    });
+    if (!booking) return;
+
+    await sendEmail({
+      to: booking.customer.user.email,
+      ...paymentReminderEmail({
+        customerName: displayName(booking.customer.user),
+        advisorName: displayName(booking.advisor.user),
+        when: booking.sessions[0] ? when.format(booking.sessions[0].scheduledAt) : null,
+        scope: booking.scopeDescription,
+        price: formatMoney(booking.priceCents, booking.currency),
+        deadline: when.format(paymentExpiryDeadline(booking.createdAt)),
+        url: `${appOrigin()}/bookings/${bookingId}/checkout`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyPaymentReminder", err, { bookingId });
+  }
+}
+
+/**
+ * To the client: their unpaid booking ran out of time and has been cancelled.
+ * Also ungated — we changed the state of something they created, and they'd
+ * otherwise find out by turning up to a session that no longer exists.
+ */
+export async function notifyBookingExpired(bookingId: string): Promise<void> {
+  if (!emailEnabled) return;
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: pendingPaymentSelect(),
+    });
+    if (!booking) return;
+
+    await sendEmail({
+      to: booking.customer.user.email,
+      ...bookingExpiredEmail({
+        customerName: displayName(booking.customer.user),
+        advisorName: displayName(booking.advisor.user),
+        scope: booking.scopeDescription,
+        url: `${appOrigin()}/advisors`,
+      }),
+    });
+  } catch (err) {
+    reportError("notifyBookingExpired", err, { bookingId });
   }
 }
 

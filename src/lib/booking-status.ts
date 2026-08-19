@@ -99,6 +99,25 @@ export const COMPLETION_REMINDER_DAYS = 3;
 export const COMPLETION_AUTO_ACCEPT_DAYS = 7;
 
 /**
+ * How long an unpaid booking is given before it is nudged, then cancelled.
+ *
+ * A booking sits at "pending_payment" from the moment it is created, and it
+ * holds the advisor's availability slot the whole time — so an abandoned
+ * checkout is not a harmless dead row, it is a slot nobody else can book. One
+ * reminder at +3h, and the sweep cancels at +24h and hands the slot back.
+ *
+ * Both windows are measured from Booking.createdAt and swept hourly by
+ * api/cron/booking-lifecycle.
+ */
+export const PAYMENT_REMINDER_HOURS = 3;
+export const PAYMENT_EXPIRY_HOURS = 24;
+
+/** When an unpaid booking created at `createdAt` will be cancelled. */
+export function paymentExpiryDeadline(createdAt: Date): Date {
+  return new Date(createdAt.getTime() + PAYMENT_EXPIRY_HOURS * 3_600_000);
+}
+
+/**
  * May the advisor mark this booking complete right now, and if not, why not?
  *
  * Pure so both callers agree: the server action enforces it (lib/actions/

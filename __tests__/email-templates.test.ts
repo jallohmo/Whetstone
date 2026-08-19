@@ -5,6 +5,8 @@ import {
   reviewInviteEmail,
   opsDisputeAlertEmail,
   needPostedEmail,
+  paymentReminderEmail,
+  bookingExpiredEmail,
 } from "@/lib/email/templates";
 
 /**
@@ -267,6 +269,76 @@ describe("completion emails", () => {
       });
       expect(html).toContain("…");
       expect(html).not.toContain("x".repeat(500));
+    });
+  });
+
+  /**
+   * The unpaid-booking pair. Both carry client-supplied scope text, and the
+   * reminder is the only warning before the sweep cancels the booking — so the
+   * deadline and the checkout link have to actually be in it.
+   */
+  describe("paymentReminderEmail", () => {
+    const unpaid = {
+      customerName: "Mo",
+      advisorName: "Dana",
+      when: "Tue, 3 Mar, 10:00 am",
+      scope: "Cash flow forecasting",
+      price: "$450.00",
+      deadline: "Wed, 4 Mar, 9:00 am",
+      url: "https://app.whetstone.au/bookings/abc123/checkout",
+    };
+
+    it("sends the client to checkout, not the thread", () => {
+      const { html } = paymentReminderEmail(unpaid);
+      expect(html).toContain("https://app.whetstone.au/bookings/abc123/checkout");
+      expect(html).not.toContain("/messages");
+    });
+
+    it("states the deadline and the price", () => {
+      const { subject, html } = paymentReminderEmail(unpaid);
+      expect(subject).toBe("Finish booking your Whetstone session");
+      expect(html).toContain("Wed, 4 Mar, 9:00 am");
+      expect(html).toContain("$450.00");
+    });
+
+    it("makes clear the booking is not yet confirmed", () => {
+      const { html } = paymentReminderEmail(unpaid);
+      expect(html).toContain("isn't confirmed yet");
+    });
+
+    it("escapes client-supplied scope text", () => {
+      const { html } = paymentReminderEmail({
+        ...unpaid,
+        scope: '<script>alert("xss")</script>',
+      });
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;script&gt;");
+    });
+
+    it("omits the time row when no session is scheduled yet", () => {
+      const { html } = paymentReminderEmail({ ...unpaid, when: null });
+      expect(html).not.toContain("Tue, 3 Mar");
+    });
+  });
+
+  describe("bookingExpiredEmail", () => {
+    const expired = {
+      customerName: "Mo",
+      advisorName: "Dana",
+      scope: "Cash flow forecasting",
+      url: "https://app.whetstone.au/advisors",
+    };
+
+    it("reassures the client they were not charged", () => {
+      const { subject, html } = bookingExpiredEmail(expired);
+      expect(subject).toBe("Your Whetstone booking has been released");
+      expect(html).toContain("haven't been charged");
+    });
+
+    it("escapes client-supplied scope text", () => {
+      const { html } = bookingExpiredEmail({ ...expired, scope: "<b>x</b>" });
+      expect(html).not.toContain("<b>x</b>");
+      expect(html).toContain("&lt;b&gt;");
     });
   });
 });
