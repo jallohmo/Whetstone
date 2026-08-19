@@ -135,6 +135,77 @@ The app uses **Supabase Auth (email + password)**. Configure the project once:
 Roles: customers self-serve at `/signup`; advisors at `/advisor/apply` (public);
 ops only via one of the methods above.
 
+### Social sign-in — "Continue with LinkedIn" / "Continue with Google"
+
+Both buttons already ship on `/login`, `/signup` and `/advisor/apply`
+(`src/components/auth/AuthForm.tsx` → `GoogleButton` / `LinkedInButton` →
+`OAuthButton`). Nothing needs to be built; each provider just has to be enabled
+on the Supabase project. Until it is, clicking the button surfaces an inline
+"Unsupported provider" error rather than silently failing. There are **no app
+env vars** for either provider — the client ID/secret live in Supabase only.
+
+**LinkedIn — create the app (linkedin.com/developers/apps → Create app)**
+
+1. Fill in name, and associate the app with your **LinkedIn Company Page**
+   (required). Upload a logo, create, then click **Verify** on the page
+   association — an admin of that Page has to approve the one-click prompt
+   before the app leaves draft.
+2. **Products** tab → request **"Sign In with LinkedIn using OpenID Connect"**.
+   It is self-serve and granted immediately; no LinkedIn review is involved.
+   This is the product that grants the `openid`, `profile` and `email` scopes
+   Supabase's `linkedin_oidc` provider asks for. (The older "Sign In with
+   LinkedIn" v1 product is deprecated — don't use it, and don't use Supabase's
+   legacy `linkedin` provider.)
+3. **Auth** tab → **Authorized redirect URLs for your app** → add exactly:
+   ```
+   https://yywcerybuaxndsvdkjiw.supabase.co/auth/v1/callback
+   ```
+   That is Supabase's callback, **not** the app's `/auth/callback` — LinkedIn
+   redirects to Supabase, Supabase then redirects to the app. One entry covers
+   production, previews and localhost. LinkedIn requires HTTPS here, which is
+   why local dev still works through the Supabase URL.
+4. Copy the **Client ID** and **Primary Client Secret** from the same tab.
+
+**Enable it on Supabase**
+
+5. Dashboard → **Authentication → Providers → LinkedIn (OIDC)** → toggle on,
+   paste the Client ID + Secret, **Save**. (Pick the OIDC entry, not the plain
+   "LinkedIn" one.)
+6. Dashboard → **Authentication → URL Configuration** → confirm the app's own
+   redirect URLs are allow-listed (§5.1 above): `/auth/callback` for production,
+   previews and `http://localhost:3000`. `OAuthButton` sends
+   `redirectTo = <origin>/auth/callback`, and Supabase refuses any origin that
+   isn't on that list.
+
+**Google** is the same shape: Google Cloud Console → OAuth consent screen →
+Credentials → **OAuth client ID (Web application)** → authorized redirect URI
+`https://yywcerybuaxndsvdkjiw.supabase.co/auth/v1/callback` → paste the client
+ID/secret into **Authentication → Providers → Google**.
+
+**Verify:** open `/login` in a private window → **Continue with LinkedIn** →
+approve on LinkedIn → you land back on `/` (or `next`) signed in. A new row
+appears in **Authentication → Users** and, via the `handle_new_user` trigger, in
+`public.users`.
+
+**What to expect after an OAuth signup**
+
+- **Role is always `CUSTOMER`.** The redirect flow can't carry a role into the
+  signup trigger, so an advisor who signs up with LinkedIn lands as a customer
+  and converts at `/advisor/apply`, where `AdvisorRolePrompt` calls
+  `becomeAdvisor()`. This is by design — the ADVISOR role is never taken from
+  provider metadata.
+- **Name and avatar are not copied.** `handle_new_user` (migration 0001) mirrors
+  only `id`, `email` and `role`, so `displayName()` falls back to the email
+  handle until the user fills in first/last name in account settings. The OIDC
+  claims are still on the auth user (`raw_user_meta_data.name`, `picture`) if
+  you later want a migration to backfill them.
+- **Email matching.** LinkedIn returns the member's primary verified email.
+  If that address already has a password account, Supabase links the identity to
+  the existing user (same email) rather than creating a second account.
+- **Secret rotation.** LinkedIn client secrets expire (12 months). When one
+  expires every LinkedIn sign-in fails at the provider; regenerate it on the
+  **Auth** tab and re-paste it into Supabase. Put a reminder in the calendar.
+
 ## 6. Payments (Stripe Connect)
 
 Payments use **Stripe Connect** (separate charges & transfers): the customer pays
