@@ -22,28 +22,31 @@ export default async function AdvisorBookingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/advisor/bookings");
 
-  const profile = await prisma.advisorProfile.findUnique({
-    where: { userId: user.id },
-    select: { id: true },
-  });
-  if (!profile) redirect("/advisor/apply");
-
-  const bookings = await prisma.booking.findMany({
-    where: {
-      advisorId: profile.id,
-      status: { in: ["pending_payment", ...LIVE_BOOKING_STATUSES] },
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
-      customer: {
-        include: {
-          user: { select: { email: true } },
-          needs: { orderBy: { createdAt: "desc" }, take: 1, include: { industry: true } },
+  // Both queries are keyed off the signed-in user, so they run in parallel
+  // rather than waiting on the profile id — one round trip instead of two.
+  const [profile, bookings] = await Promise.all([
+    prisma.advisorProfile.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    }),
+    prisma.booking.findMany({
+      where: {
+        advisor: { userId: user.id },
+        status: { in: ["pending_payment", ...LIVE_BOOKING_STATUSES] },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        sessions: { orderBy: { scheduledAt: "asc" }, take: 1 },
+        customer: {
+          include: {
+            user: { select: { email: true } },
+            needs: { orderBy: { createdAt: "desc" }, take: 1, include: { industry: true } },
+          },
         },
       },
-    },
-  });
+    }),
+  ]);
+  if (!profile) redirect("/advisor/apply");
 
   return (
     <div>

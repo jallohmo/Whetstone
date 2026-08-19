@@ -23,27 +23,24 @@ export default async function ClientBookingsPage() {
   if (user.role === "ADVISOR") redirect("/advisor");
   if (user.role === "OPS_ADMIN") redirect("/ops");
 
-  const profile = await prisma.customerProfile.findUnique({
-    where: { userId: user.id },
-    select: { id: true },
-  });
-
-  const bookings = profile
-    ? await prisma.booking.findMany({
-        where: { customerId: profile.id },
-        orderBy: { createdAt: "desc" },
+  // Filtered through the customer relation rather than looking the profile id up
+  // first: one database round trip instead of two serial ones. A user with no
+  // customer profile matches nothing, which is what the old profile guard
+  // produced anyway.
+  const bookings = await prisma.booking.findMany({
+    where: { customer: { userId: user.id } },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true, status: true, scopeDescription: true,
+      sessions: { orderBy: { scheduledAt: "asc" }, take: 1, select: { scheduledAt: true } },
+      advisor: {
         select: {
-          id: true, status: true, scopeDescription: true,
-          sessions: { orderBy: { scheduledAt: "asc" }, take: 1, select: { scheduledAt: true } },
-          advisor: {
-            select: {
-              avatarUrl: true,
-              user: { select: { firstName: true, lastName: true, email: true, avatarUrl: true } },
-            },
-          },
+          avatarUrl: true,
+          user: { select: { firstName: true, lastName: true, email: true, avatarUrl: true } },
         },
-      })
-    : [];
+      },
+    },
+  });
 
   return (
     <div>
