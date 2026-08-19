@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, ChevronRight, MessageSquare } from "lucide-react";
+import { CheckCircle2, ChevronRight, CreditCard, MessageSquare } from "lucide-react";
 import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { getCurrentUser, displayName } from "@/lib/auth";
@@ -58,14 +58,20 @@ export default async function ClientBookingsPage() {
           {bookings.map((b) => {
             const advisorName = displayName(b.advisor.user);
             const when = b.sessions[0]?.scheduledAt;
-            // A booking waiting on this client is the one row that shouldn't open
-            // the thread — send them straight to the thing they need to do.
+            // A booking waiting on this client shouldn't open the thread — send
+            // them straight to the thing they need to do. Unpaid bookings go to
+            // checkout (createCheckout bounces them on if they've already paid),
+            // and a booking the advisor has closed goes to the confirm screen.
+            // Everything else has nothing outstanding, so the thread it is.
+            const needsPayment = b.status === "pending_payment";
             const needsConfirmation = b.status === "awaiting_confirmation";
+            const href = needsPayment
+              ? `/bookings/${b.id}/checkout`
+              : needsConfirmation
+                ? `/bookings/${b.id}/confirm-completion`
+                : `/bookings/${b.id}/messages`;
             return (
-              <Link
-                key={b.id}
-                href={needsConfirmation ? `/bookings/${b.id}/confirm-completion` : `/bookings/${b.id}/messages`}
-              >
+              <Link key={b.id} href={href}>
                 <Card className="transition hover:-translate-y-px hover:shadow-float">
                   <div className="flex items-center gap-3">
                     <Avatar name={advisorName} src={b.advisor.avatarUrl ?? b.advisor.user.avatarUrl} size={44} />
@@ -78,7 +84,7 @@ export default async function ClientBookingsPage() {
                     <span
                       className={cn(
                         "shrink-0 rounded-pill px-2.5 py-1 text-2xs font-semibold",
-                        needsConfirmation
+                        needsConfirmation || needsPayment
                           ? "bg-brand-blue text-white"
                           : "bg-gray-100 text-gray-600",
                       )}
@@ -89,7 +95,11 @@ export default async function ClientBookingsPage() {
                   <p className="mt-3 text-body text-gray-600 line-clamp-2">{b.scopeDescription}</p>
                   <div className="mt-4 flex items-center justify-between border-t border-dashed border-gray-300 pt-4">
                     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-blue">
-                      {needsConfirmation ? (
+                      {needsPayment ? (
+                        <>
+                          <CreditCard size={15} strokeWidth={2} /> Complete payment
+                        </>
+                      ) : needsConfirmation ? (
                         <>
                           <CheckCircle2 size={15} strokeWidth={2} /> Review and confirm
                         </>

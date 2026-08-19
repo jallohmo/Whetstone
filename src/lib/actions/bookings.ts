@@ -78,7 +78,9 @@ export async function createBooking(formData: FormData) {
     // packages schedule their remaining sessions later, by coordination.
     if (slot) {
       await tx.session.create({
-        data: { bookingId: b.id, scheduledAt: slot.startsAt, status: "scheduled" },
+        // slotId is what the expiry sweep releases if this booking is never paid
+        // for — see lib/booking-expiry.ts.
+        data: { bookingId: b.id, scheduledAt: slot.startsAt, status: "scheduled", slotId: slot.id },
       });
       await tx.availabilitySlot.update({
         where: { id: slot.id },

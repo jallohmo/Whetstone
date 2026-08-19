@@ -126,6 +126,7 @@ model AvailabilitySlot {
   startsAt  DateTime       @map("starts_at")
   endsAt    DateTime       @map("ends_at")
   isBooked  Boolean        @default(false) @map("is_booked")
+  session   Session?
 
   @@index([advisorId])
   @@map("availability_slots")
@@ -226,6 +227,14 @@ model Booking {
   completionRemindedAt       DateTime?       @map("completion_reminded_at")
   clientConfirmedAt          DateTime?       @map("client_confirmed_at")
   completionAutoAccepted     Boolean         @default(false) @map("completion_auto_accepted")
+  // Unpaid-booking trail, mirroring the completion stamps above. A booking left
+  // at "pending_payment" gets one nudge (paymentRemindedAt, set once by the same
+  // atomic-claim pattern) and is then cancelled by the sweep, which stamps
+  // paymentExpiredAt and releases the reserved slot. The stamp is what separates
+  // "cancelled because nobody paid" from "cancelled by an ops refund" — both
+  // land on status "cancelled".
+  paymentRemindedAt          DateTime?       @map("payment_reminded_at")
+  paymentExpiredAt           DateTime?       @map("payment_expired_at")
   sessions                   Session[]
   payment                    Payment?
   review                     Review?
@@ -244,6 +253,13 @@ model Session {
   bookingId    String   @map("booking_id")
   booking      Booking  @relation(fields: [bookingId], references: [id])
   scheduledAt  DateTime @map("scheduled_at")
+  // The availability slot this session reserved, when it came from one. Set at
+  // booking time so releasing a slot is exact: without it, freeing a slot means
+  // guessing from advisorId + startsAt, which quietly unbooks the wrong row if an
+  // advisor ever has two slots at the same instant. Nullable because a
+  // multi-session package schedules its later sessions by coordination.
+  slotId       String?  @unique @map("slot_id")
+  slot         AvailabilitySlot? @relation(fields: [slotId], references: [id])
   status       String   @default("scheduled") // "scheduled" | "completed" | "no_show" | "rescheduled"
   // Set when the advisor records the outcome above. A booking can only be marked
   // complete once every one of its sessionCount sessions has left "scheduled".

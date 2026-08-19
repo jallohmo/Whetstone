@@ -177,6 +177,74 @@ export function bookingConfirmedEmail(p: {
   };
 }
 
+/**
+ * To the client: they started a booking and never paid, so it isn't confirmed
+ * and the advisor's time isn't held for them. Sent once, `PAYMENT_REMINDER_HOURS`
+ * after the booking was created.
+ */
+export function paymentReminderEmail(p: {
+  customerName: string;
+  advisorName: string;
+  when: string | null;
+  scope: string;
+  price: string;
+  deadline: string;
+  url: string;
+}): EmailContent {
+  const rows = [{ label: "Advisor", value: p.advisorName }];
+  if (p.when) rows.push({ label: "When", value: p.when });
+  rows.push({ label: "Focus", value: p.scope }, { label: "Total", value: p.price });
+  return {
+    subject: "Finish booking your Whetstone session",
+    html: layout({
+      preview: `Your session with ${p.advisorName} isn't confirmed yet.`,
+      eyebrow: "Payment outstanding",
+      heading: `One step left, ${p.customerName}`,
+      body:
+        para(
+          `You started booking a session with <strong style="color:${INK}">${esc(p.advisorName)}</strong> but the payment wasn't completed, so it isn't confirmed yet.`,
+        ) +
+        infoPanel(rows) +
+        para(
+          `We're holding this time until <strong style="color:${INK}">${esc(p.deadline)}</strong>. After that the booking is released so someone else can take the slot.`,
+        ),
+      cta: { label: "Complete payment", url: p.url },
+      footerReason: "You're receiving this because you started a booking on Whetstone.",
+    }),
+  };
+}
+
+/**
+ * To the client: the unpaid booking above ran out of time and was cancelled.
+ * Always sent — it reports something we did to their booking, so it isn't
+ * preference-gated.
+ */
+export function bookingExpiredEmail(p: {
+  customerName: string;
+  advisorName: string;
+  scope: string;
+  url: string;
+}): EmailContent {
+  return {
+    subject: "Your Whetstone booking has been released",
+    html: layout({
+      preview: `Your unpaid booking with ${p.advisorName} was released.`,
+      eyebrow: "Booking released",
+      heading: `We've released your booking, ${p.customerName}`,
+      body:
+        para(
+          `Your booking with <strong style="color:${INK}">${esc(p.advisorName)}</strong> wasn't paid for, so we've cancelled it and put the time back on their calendar.`,
+        ) +
+        panel(para(esc(p.scope))) +
+        para(
+          `You haven't been charged. If you still want the session, you can book it again — though that time may since have gone.`,
+        ),
+      cta: { label: "Book again", url: p.url },
+      footerReason: "You're receiving this because you started a booking on Whetstone.",
+    }),
+  };
+}
+
 /** To the advisor: a new booking landed (gated on the "newBookings" pref). */
 export function newBookingEmail(p: {
   advisorName: string;
