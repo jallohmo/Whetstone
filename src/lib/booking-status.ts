@@ -118,6 +118,67 @@ export function paymentExpiryDeadline(createdAt: Date): Date {
 }
 
 /**
+ * How long after creation checkout still counts as part of the booking funnel.
+ *
+ * Someone walking the funnel reaches checkout seconds after the booking row is
+ * written; someone arriving from the reminder email or their bookings list is
+ * coming back to a booking they left. The two need different screens — a
+ * progress stepper and "here's your total" for the first, a deadline and "this
+ * isn't confirmed yet" for the second — and createdAt is what separates them
+ * without a query parameter that can be dropped, shared or forged.
+ *
+ * Erring long is the safe direction: a first-timer who took 40 minutes to decide
+ * is better served by the returning view (which tells them when the hold ends)
+ * than a returning client would be by the funnel view.
+ */
+export const CHECKOUT_RESUME_AFTER_MINUTES = 30;
+
+/** Is this checkout visit a return to an abandoned booking rather than the funnel? */
+export function isResumedCheckout(createdAt: Date, now: Date = new Date()): boolean {
+  return now.getTime() - createdAt.getTime() >= CHECKOUT_RESUME_AFTER_MINUTES * 60_000;
+}
+
+/**
+ * May this unpaid booking still be paid for, and if not, why not?
+ *
+ * Pure so both callers agree, the same arrangement as completionReadiness: the
+ * server action enforces it (lib/actions/payments.ts) and the checkout screen
+ * renders the refusal with it. Two different answers here is how you get a
+ * payment button that throws when clicked — or worse, one that charges.
+ *
+ * The elapsed-session rule is the one that matters. Nothing else in the payment
+ * path looks at the clock, so without it a client can pay full price for a
+ * session whose start time has already gone by: book a 10am slot at 9am, leave
+ * checkout, come back at 11am and the money still moves. The expiry window
+ * doesn't prevent that — a session can easily fall inside it.
+ */
+export function checkoutReadiness(
+  status: string,
+  createdAt: Date,
+  firstSessionAt: Date | null,
+  now: Date = new Date(),
+): { ready: boolean; reason?: string; kind?: "session_elapsed" | "window_elapsed" | "not_payable" } {
+  if (status !== "pending_payment") {
+    return { ready: false, reason: "This booking isn't awaiting payment.", kind: "not_payable" };
+  }
+  if (firstSessionAt && firstSessionAt <= now) {
+    return {
+      ready: false,
+      kind: "session_elapsed",
+      reason: "That session's start time has already passed, so it can't be paid for now.",
+    };
+  }
+  if (paymentExpiryDeadline(createdAt) <= now) {
+    return {
+      ready: false,
+      kind: "window_elapsed",
+      reason: "This booking was held too long without payment and is being released.",
+    };
+  }
+  return { ready: true };
+}
+
+/**
  * May the advisor mark this booking complete right now, and if not, why not?
  *
  * Pure so both callers agree: the server action enforces it (lib/actions/

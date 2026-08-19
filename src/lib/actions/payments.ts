@@ -9,6 +9,7 @@ import { splitCommission } from "@/lib/currency";
 import { platformConfig } from "@/lib/platform-config";
 import { getCurrentUser } from "@/lib/auth";
 import { notifyBookingConfirmed, notifyPayoutReleased } from "@/lib/email/notify";
+import { checkoutReadiness } from "@/lib/booking-status";
 
 function origin(): string {
   const h = headers();
@@ -38,7 +39,10 @@ export async function createCheckout(formData: FormData) {
 
   const booking = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
-    include: { customer: { select: { userId: true } } },
+    include: {
+      customer: { select: { userId: true } },
+      sessions: { orderBy: { scheduledAt: "asc" }, take: 1, select: { scheduledAt: true } },
+    },
   });
   // Paying is the client's alone. Ops refund and resolve elsewhere; the advisor
   // is the payee, never the payer.
@@ -52,6 +56,18 @@ export async function createCheckout(formData: FormData) {
   if (booking.status !== "pending_payment") {
     redirect(`/bookings/${bookingId}/confirmed`); // already paid
   }
+
+  // Same predicate the checkout screen refuses with — see lib/booking-status.
+  // This is the last gate before money moves, so it has to run here and not only
+  // in the page: the page can be stale by the time the form posts, and the
+  // bookingId is caller-controlled anyway. Charging for a session that has
+  // already come and gone is the failure this prevents.
+  const readiness = checkoutReadiness(
+    booking.status,
+    booking.createdAt,
+    booking.sessions[0]?.scheduledAt ?? null,
+  );
+  if (!readiness.ready) throw new Error(readiness.reason);
 
   if (!stripeEnabled) {
     // Dev fallback: record the held payment and confirm, mirroring production end state.
