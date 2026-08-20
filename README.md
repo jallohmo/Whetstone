@@ -139,6 +139,11 @@ Real **Supabase Auth** (email + password) is wired:
 Auth dashboard config (redirect URLs, email confirmation, SMTP, first ops admin)
 is in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) §5**.
 
+## Help documentation
+
+Plain-language guides for non-technical users — clients, advisors, and the ops
+team — live in **[docs/help/](docs/help/README.md)**.
+
 ## Deploying to Vercel
 
 The repo is deploy-ready (`vercel.json`, `postinstall: prisma generate`, and the
