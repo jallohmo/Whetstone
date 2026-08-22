@@ -39,6 +39,59 @@ export function dominantCurrency<T extends { currency: string }>(rows: T[]): str
   return best;
 }
 
+/**
+ * Payment statuses that mean the client's money actually left their account and
+ * has not come back. "held" counts: this platform charges up front and holds the
+ * funds in escrow, so from the client's side a held payment is already spent —
+ * their statement says so — whether or not the session has happened yet.
+ * "refunded" does not count, which is the whole reason this list exists.
+ */
+export const SPENT_PAYMENT_STATUSES = ["held", "released"] as const;
+
+export interface SpendRow {
+  amountCents: number;
+  currency: string;
+  /** Sessions the booking was sold as, NOT session rows scheduled so far. */
+  sessionCount: number;
+}
+
+export interface SpendSummary {
+  currency: string;
+  totalMinor: number;
+  sessions: number;
+}
+
+/**
+ * The client's "this year" spend card: one figure and the session count that
+ * belongs to it.
+ *
+ * Both numbers come from the SAME rows, and that is the point. They used to be
+ * computed apart — the money from Payment rows, the count from
+ * `past.length + upcoming.length` off the two dashboard list loaders — so the
+ * card could say "$120 across 2 sessions" while one of those sessions belonged
+ * to a cancelled booking that was never paid for. Anything that isn't in the
+ * total must not be in the count.
+ *
+ * Counting `sessionCount` rather than Session rows also keeps a 3-session
+ * package reading as 3 from the moment it is paid for, instead of climbing from
+ * 1 as the later sessions get scheduled by coordination.
+ *
+ * Currency: dashboards summarise one currency and never sum across them, so
+ * rows outside the dominant one are dropped from BOTH halves together.
+ */
+export function summariseSpend(rows: SpendRow[]): SpendSummary {
+  if (rows.length === 0) {
+    return { currency: DEFAULT_CURRENCY, totalMinor: 0, sessions: 0 };
+  }
+  const currency = dominantCurrency(rows);
+  const inCcy = rows.filter((r) => r.currency === currency);
+  return {
+    currency,
+    totalMinor: inCcy.reduce((sum, r) => sum + r.amountCents, 0),
+    sessions: inCcy.reduce((sum, r) => sum + r.sessionCount, 0),
+  };
+}
+
 /** Short month label, e.g. "Sep". */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

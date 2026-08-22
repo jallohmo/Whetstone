@@ -3,6 +3,8 @@ import {
   firstNameOf,
   dominantCurrency,
   countThisMonth,
+  summariseSpend,
+  SPENT_PAYMENT_STATUSES,
 } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 
@@ -80,6 +82,69 @@ describe("dashboard helpers", () => {
 
     it("returns zero for no rows", () => {
       expect(countThisMonth([], now)).toBe(0);
+    });
+  });
+
+  /**
+   * The client's "this year" card. Its two halves used to come from different
+   * queries — money from Payment rows, sessions from the lengths of the two
+   * capped dashboard list loaders — so it could report a session it had not
+   * charged for. These pin the property that matters: whatever is not in the
+   * total is not in the count.
+   */
+  describe("summariseSpend", () => {
+    const aud = (amountCents: number, sessionCount = 1) => ({
+      amountCents,
+      currency: "AUD",
+      sessionCount,
+    });
+
+    it("counts a paid upcoming session as spent — the money already left", () => {
+      // One past, one upcoming, both paid up front and held in escrow.
+      const s = summariseSpend([aud(12000), aud(12000)]);
+      expect(s.totalMinor).toBe(24000);
+      expect(s.sessions).toBe(2);
+    });
+
+    it("returns a zeroed summary with no rows", () => {
+      const s = summariseSpend([]);
+      expect(s).toEqual({ currency: DEFAULT_CURRENCY, totalMinor: 0, sessions: 0 });
+    });
+
+    it("counts the sessions a booking was sold as, not the ones scheduled so far", () => {
+      // A 3-session package reads as 3 the moment it is paid for, rather than
+      // climbing from 1 as the later sessions get scheduled by coordination.
+      expect(summariseSpend([aud(30000, 3)]).sessions).toBe(3);
+    });
+
+    it("never counts a session whose money is excluded by currency", () => {
+      const s = summariseSpend([aud(12000), aud(12000), { amountCents: 9900, currency: "USD", sessionCount: 5 }]);
+      expect(s.currency).toBe("AUD");
+      expect(s.totalMinor).toBe(24000);
+      expect(s.sessions).toBe(2);
+    });
+
+    it("keeps the count consistent with the total for any input", () => {
+      // The invariant the split queries could not hold: sessions are zero
+      // exactly when the total is, because both come off the same rows.
+      for (const rows of [[], [aud(0, 0)], [aud(12000)], [aud(12000, 2), aud(500, 1)]]) {
+        const s = summariseSpend(rows);
+        expect(s.sessions === 0).toBe(s.totalMinor === 0);
+      }
+    });
+  });
+
+  describe("SPENT_PAYMENT_STATUSES", () => {
+    it("counts money held in escrow — the client has already paid", () => {
+      expect(SPENT_PAYMENT_STATUSES).toContain("held");
+    });
+
+    it("counts money released to the advisor", () => {
+      expect(SPENT_PAYMENT_STATUSES).toContain("released");
+    });
+
+    it("does not count a refund as spend", () => {
+      expect(SPENT_PAYMENT_STATUSES).not.toContain("refunded");
     });
   });
 });

@@ -2,6 +2,7 @@ import {
   wallClockToUtc,
   utcToWallClock,
   zoneOffsetMs,
+  zonedYearStart,
   PLATFORM_TIMEZONE,
 } from "@/lib/time";
 
@@ -125,6 +126,42 @@ describe("time zone handling", () => {
       expect(naiveInUtcRuntime - wallClockToUtc("2026-08-18T09:00", SYD).getTime()).toBe(
         10 * 60 * 60 * 1000,
       );
+    });
+  });
+
+  /**
+   * The client dashboard's "this year" boundary. Sydney is ahead of UTC, so the
+   * UTC year starts while it is still last year there — which used to drop New
+   * Year's Day bookings out of the client's own annual total.
+   */
+  describe("zonedYearStart", () => {
+    it("starts the year at local midnight, not UTC midnight", () => {
+      // 2026-01-01T00:00 in Sydney (+11 in January) is 2025-12-31T13:00Z.
+      const start = zonedYearStart(new Date("2026-06-01T00:00:00Z"), SYD);
+      expect(start.toISOString()).toBe("2025-12-31T13:00:00.000Z");
+    });
+
+    it("includes a booking made on New Year's morning in Sydney", () => {
+      // 00:30 on 1 January in Sydney — the case the UTC boundary excluded.
+      const booking = new Date("2025-12-31T13:30:00Z");
+      expect(booking >= zonedYearStart(booking, SYD)).toBe(true);
+    });
+
+    it("reads the year in the zone, not in UTC", () => {
+      // Same instant: still 31 December in UTC, already 1 January in Sydney.
+      const at = new Date("2025-12-31T13:30:00Z");
+      expect(zonedYearStart(at, SYD).toISOString()).toBe("2025-12-31T13:00:00.000Z");
+    });
+
+    it("excludes the previous year", () => {
+      const lastYear = new Date("2025-06-01T00:00:00Z");
+      const start = zonedYearStart(new Date("2026-06-01T00:00:00Z"), SYD);
+      expect(lastYear >= start).toBe(false);
+    });
+
+    it("matches UTC midnight for a zone that is on UTC", () => {
+      const start = zonedYearStart(new Date("2026-06-01T00:00:00Z"), "UTC");
+      expect(start.toISOString()).toBe("2026-01-01T00:00:00.000Z");
     });
   });
 });
