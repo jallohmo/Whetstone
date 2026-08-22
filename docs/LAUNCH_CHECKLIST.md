@@ -73,6 +73,31 @@ Sign-up uses `emailRedirectTo: ${origin}/auth/callback`. In Supabase →
 Miss this and email-confirmation links bounce to an error in production (works
 locally, breaks live).
 
+### 3b. Social sign-in providers (LinkedIn + Google)  ⛔ not yet enabled
+
+`AuthForm` ships "Continue with LinkedIn" and "Continue with Google" buttons on
+`/login`, `/signup` and `/advisor/apply`. **Neither provider is enabled on the
+Supabase project**, so today both buttons fail with an inline "Unsupported
+provider" error in front of the user. Either enable them or the buttons are a
+visible defect at launch.
+
+- **[ ] LinkedIn** — create the app at linkedin.com/developers, associate + verify
+  a Company Page, request the **Sign In with LinkedIn using OpenID Connect**
+  product, register the Supabase callback, then enable **LinkedIn (OIDC)** in
+  Supabase → Authentication → Providers. Full walkthrough in
+  `docs/DEPLOYMENT.md` §5 ("Social sign-in").
+- **[ ] Google** — Google Cloud Console OAuth client, same Supabase callback,
+  enable **Google** in the same Providers screen.
+- No app env vars for either — credentials live in Supabase only, so no redeploy.
+- **Diarise the LinkedIn secret expiry (12 months).** When it lapses, every
+  LinkedIn sign-in fails at the provider with nothing in the app to indicate why.
+
+OAuth signups always land as `CUSTOMER` (the redirect flow can't carry a role
+into the signup trigger); advisors convert at `/advisor/apply`. Name and avatar
+are **not** copied from the provider — `handle_new_user` mirrors only id, email
+and role, so these users display as their email handle until they fill in their
+name in account settings.
+
 ## 4. `NEXT_PUBLIC_*` are build-time, not runtime
 
 Vercel inlines every `NEXT_PUBLIC_*` var into the bundle **at build time**. If you
@@ -172,7 +197,7 @@ jobs, daily cadence). The windows live in `src/lib/booking-status.ts`
 (`COMPLETION_REMINDER_DAYS`, `COMPLETION_AUTO_ACCEPT_DAYS`) — change them there,
 not in the route.
 
-## 6. Pre-launch activities — production domain & Stripe go-live
+## 6. Pre-launch activities — production domain, Stripe go-live, auth domain
 
 These are the outstanding launch activities. They are grouped because **several
 other items depend on having a real production domain**, so this comes first.
@@ -230,6 +255,32 @@ deploys on Hobby. For both the 24h and 1h reminders to fire:
 2. **[ ] Set `CRON_SECRET`** in Vercel (a long random string, e.g.
    `openssl rand -hex 32`). The endpoint returns 401 without it, so reminders
    won't run until it's set. Requires `RESEND_API_KEY` (§5b) to actually send.
+
+### 6d. Custom auth domain — OAuth consent screen  (only if §3b is going live)
+
+The LinkedIn/Google consent screen shows the **Supabase** host, not
+`app.whetstone.au`. Untouched, users are asked to approve a redirect to
+`https://yywcerybuaxndsvdkjiw.supabase.co` — a random project ref on an
+unfamiliar domain, at the exact moment they're deciding whether to trust us with
+their LinkedIn identity. Do this **before** social sign-in is public: the
+migration is far cheaper with zero existing OAuth users.
+
+1. **[ ] Enable the Custom Domain add-on** for `auth.whetstone.au` —
+   $0.0137/hr ≈ **$10/mo per project**, and **not** covered by the Vercel/Supabase
+   spend cap. (Free alternative: a vanity subdomain, `whetstone.supabase.co` —
+   still visibly Supabase, CLI-only, experimental, and it likely breaks auth on
+   the old host. Trade-off table in `docs/DEPLOYMENT.md` §5.)
+2. **[ ] Add the new callback to LinkedIn and Google *before* activating** —
+   `https://auth.whetstone.au/auth/v1/callback` alongside the existing
+   supabase.co one. Supabase advertises the new host the moment it activates.
+3. **[ ] Update `NEXT_PUBLIC_SUPABASE_URL`** to `https://auth.whetstone.au` in
+   Vercel and **redeploy** — build-time inlined (§4).
+4. **[ ] Drop the old callbacks** from both provider consoles once traffic has
+   settled on the new host.
+
+The old `<ref>.supabase.co` host keeps serving throughout, so there is no
+downtime window and step 3 can wait. Full runbook: `docs/DEPLOYMENT.md` §5
+("Custom auth domain").
 
 ## 7. Verify with /api/health
 
