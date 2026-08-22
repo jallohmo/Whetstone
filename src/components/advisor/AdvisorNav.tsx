@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, Inbox, LayoutDashboard, LifeBuoy, Settings, ShieldCheck, UserCheck, Wallet } from "lucide-react";
+import { CalendarClock, Inbox, LayoutDashboard, LifeBuoy, MessagesSquare, Settings, ShieldCheck, UserCheck, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -27,6 +27,7 @@ const NAV: NavItem[] = [
   { href: "/advisor/verification-status", label: "Verification", icon: ShieldCheck },
   { href: "/advisor/availability", label: "Availability", icon: CalendarClock },
   { href: "/advisor/bookings", label: "Bookings", icon: Inbox },
+  { href: "/advisor/messages", label: "Messages", icon: MessagesSquare },
   { href: "/advisor/earnings", label: "Earnings", icon: Wallet },
   { href: "https://help.whetstone.au", label: "Help & Support", icon: LifeBuoy, external: true },
 ];

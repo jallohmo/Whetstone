@@ -55,6 +55,7 @@ model User {
   createdAt       DateTime         @default(now()) @map("created_at")
   advisorProfile  AdvisorProfile?
   customerProfile CustomerProfile?
+  threadReads     ThreadRead[]
 
   @@map("users")
 }
@@ -251,6 +252,7 @@ model Booking {
   outcomeSurvey              OutcomeSurvey?
   disputes                   Dispute[]
   messages                   Message[]
+  threadReads                ThreadRead[]
 
   @@index([customerId])
   @@index([advisorId])
@@ -283,6 +285,33 @@ model Session {
 
   @@index([bookingId])
   @@map("sessions")
+}
+
+// How far through a booking's thread one person has read.
+//
+// Message itself carries no read state — it never has — so "unread" had no
+// answer in the database, and an advisor had no way to see a client had written
+// to them without opening every booking. One row per person per thread, holding
+// the instant they last had it open; anything newer from the other party counts
+// as unread. An absent row means never opened, so everything from the other
+// side is unread — NOT zero.
+//
+// Per-thread rather than per-message: a bell needs a count, and this answers it
+// without a receipt row for every message ever sent. Per-message receipts are
+// what read ticks inside the thread would need, and can be added later without
+// unpicking this.
+model ThreadRead {
+  id         String   @id @default(cuid())
+  bookingId  String   @map("booking_id")
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  lastReadAt DateTime @map("last_read_at")
+
+  // One marker per person per thread — the upsert on thread open depends on it.
+  @@unique([bookingId, userId])
+  @@index([userId])
+  @@map("thread_reads")
 }
 
 model Message {

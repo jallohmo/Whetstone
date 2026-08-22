@@ -3,6 +3,8 @@ import { getCurrentUser, displayName } from "@/lib/auth";
 import { Wordmark } from "@/components/ui/Wordmark";
 import { ProfileMenu } from "@/components/shared/ProfileMenu";
 import { CustomerNav } from "@/components/customer/CustomerNav";
+import { MessageBell } from "@/components/shared/MessageBell";
+import { unreadTotal } from "@/lib/thread-reads";
 
 /**
  * Customer shell (Screens 1-9). Canvas gray100, centered white "pill" top bar,
@@ -20,6 +22,10 @@ export default async function CustomerLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+  // Only clients get a client bell. Advisors and ops can reach this shell (the
+  // landing page lives in it), and pointing them at /messages would just bounce
+  // them back to their own dashboard.
+  const unread = user?.role === "CUSTOMER" ? await unreadTotal(user.id) : 0;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -34,6 +40,16 @@ export default async function CustomerLayout({
           </Link>
           {user && <CustomerNav />}
           <nav className="flex items-center gap-1 text-sm">
+            {user?.role === "CUSTOMER" && (
+              // In the shell rather than on one page, so it follows the client
+              // around — a bell only in one place is a bell you have to go and
+              // look at.
+              <MessageBell
+                count={unread}
+                href="/messages"
+                className="mr-1 h-10 w-10 hover:bg-gray-100"
+              />
+            )}
             {user ? (
               <ProfileMenu
                 role="customer"

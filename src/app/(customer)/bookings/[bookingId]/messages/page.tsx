@@ -10,6 +10,7 @@ import { raiseDispute } from "@/lib/actions/disputes";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
 import { prisma } from "@/lib/prisma";
+import { markThreadRead } from "@/lib/thread-reads";
 import { cn } from "@/lib/cn";
 import { platformFormat } from "@/lib/time";
 
@@ -55,6 +56,9 @@ export default async function MessagesPage({
   ]);
 
   const isParty = booking.customer.userId === user.id || booking.advisor.userId === user.id;
+  // Opening the thread is what "read" means here. Parties only — ops reading a
+  // thread for a dispute must not clear a party's badge on their behalf.
+  if (isParty) await markThreadRead(params.bookingId, user.id);
   const viewerIsAdvisor = booking.advisor.userId === user.id;
   // "Join video" is for the next session that hasn't happened yet; once the
   // advisor records an outcome the session drops out of this and the completion

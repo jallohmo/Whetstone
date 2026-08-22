@@ -15,8 +15,10 @@ import { Money } from "@/components/shared/Money";
 import { DashCard } from "@/components/dashboard/DashCard";
 import { StatCard, DeltaPill } from "@/components/dashboard/StatCard";
 import { EarningsBarChart } from "@/components/dashboard/EarningsBarChart";
+import { MessageBell } from "@/components/shared/MessageBell";
 import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { unreadTotal } from "@/lib/thread-reads";
 import { buildEarningsSummary, greeting, firstNameOf } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
@@ -52,7 +54,7 @@ export default async function AdvisorHomePage() {
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
 
-  const [payments, upcoming, reviews, openSlots, sessionsThisMonth, sessionsThisWeek, recentMessages] =
+  const [payments, upcoming, reviews, openSlots, sessionsThisMonth, sessionsThisWeek, recentMessages, unreadMessages] =
     await Promise.all([
       prisma.payment.findMany({
         where: { booking: { advisorId: profile.id } },
@@ -108,6 +110,9 @@ export default async function AdvisorHomePage() {
           booking: { select: { customer: { select: { businessName: true, user: { select: { avatarUrl: true } } } } } },
         },
       }),
+      // Resolved at render, so it is accurate as of this navigation and goes
+      // stale until the next one — see MessageBell.
+      unreadTotal(user.id),
     ]);
 
   const name = firstNameOf(displayName(user));
@@ -157,12 +162,15 @@ export default async function AdvisorHomePage() {
             this week
           </p>
         </div>
-        <Link
-          href="/advisor/availability"
-          className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
-        >
-          <Plus size={16} strokeWidth={2} /> Add availability
-        </Link>
+        <div className="flex items-center gap-3">
+          <MessageBell count={unreadMessages} href="/advisor/messages" />
+          <Link
+            href="/advisor/availability"
+            className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
+          >
+            <Plus size={16} strokeWidth={2} /> Add availability
+          </Link>
+        </div>
       </div>
 
       {/* Stat strip */}
@@ -285,7 +293,7 @@ export default async function AdvisorHomePage() {
         {/* Right column */}
         <div className="flex flex-col gap-5">
           {/* Messages */}
-          <DashCard title="Messages" action={{ label: "Open", href: "/advisor/bookings" }}>
+          <DashCard title="Messages" action={{ label: "Open", href: "/advisor/messages" }}>
             {threads.length === 0 ? (
               <p className="text-sm text-gray-500">No messages yet.</p>
             ) : (
