@@ -163,6 +163,7 @@ model Need {
   status         String           @default("open") // "open" | "matched" | "closed"
   createdAt      DateTime         @default(now()) @map("created_at")
   matchDecisions MatchDecision[]
+  bookings       Booking[]
 
   @@index([status])
   @@map("needs")
@@ -204,6 +205,15 @@ model Booking {
   advisor                    AdvisorProfile  @relation(fields: [advisorId], references: [id])
   packageId                  String          @map("package_id")
   package                    Package         @relation(fields: [packageId], references: [id])
+  // The challenge this booking was made to address. createBooking already
+  // received a needId, checked the client owned it, read its industry off it —
+  // and then dropped it, so nothing tied a booking to the brief behind it. The
+  // advisor screen had to guess with "the client's most recent need", which
+  // hands an advisor someone else's brief the moment a client posts a second
+  // one. Nullable: a client can book an advisor directly without posting a
+  // challenge first, and older rows may not be resolvable.
+  needId                     String?         @map("need_id")
+  need                       Need?           @relation(fields: [needId], references: [id])
   // Copied at booking time — protects the bounded-scope guarantee even if the
   // package definition changes later (liability-containment design decision).
   sessionCount               Int             @map("session_count")
@@ -245,6 +255,7 @@ model Booking {
   @@index([customerId])
   @@index([advisorId])
   @@index([status])
+  @@index([needId])
   @@map("bookings")
 }
 

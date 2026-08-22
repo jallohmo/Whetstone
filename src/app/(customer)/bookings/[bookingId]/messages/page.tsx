@@ -5,6 +5,7 @@ import { PageHeader, Card } from "@/components/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { MessageComposer } from "@/components/booking/MessageComposer";
 import { CompletionPanel } from "@/components/booking/CompletionPanel";
+import { ClientBriefPanel } from "@/components/booking/ClientBriefPanel";
 import { raiseDispute } from "@/lib/actions/disputes";
 import { getCurrentUser } from "@/lib/auth";
 import { getAuthorizedBooking } from "@/lib/actions/messages";
@@ -47,6 +48,8 @@ export default async function MessagesPage({
       select: {
         advisor: { select: { userId: true, avatarUrl: true, user: { select: { email: true } } } },
         customer: { select: { userId: true, user: { select: { email: true } } } },
+        // The brief this booking was made against — see ClientBriefPanel.
+        need: { select: { problemArea: true, description: true, industry: { select: { name: true } } } },
       },
     }),
   ]);
@@ -75,6 +78,28 @@ export default async function MessagesPage({
         <div className="mb-page-gap rounded-lg border border-amber-500/40 bg-amber-100 p-4 text-sm text-amber-700">
           Thanks — our team has your report and will be in touch. The booking is on hold.
         </div>
+      )}
+
+      {/* Background before the conversation: an advisor arriving from their
+          inbox used to land on an empty thread with no challenge, scope or
+          price anywhere on the screen. */}
+      {isParty && (
+        <ClientBriefPanel
+          brief={
+            parties?.need
+              ? {
+                  problemArea: parties.need.problemArea,
+                  description: parties.need.description,
+                  industryName: parties.need.industry.name,
+                }
+              : null
+          }
+          viewerIsAdvisor={viewerIsAdvisor}
+          sessionCount={booking.sessionCount}
+          scopeDescription={booking.scopeDescription}
+          priceCents={booking.priceCents}
+          currency={booking.currency}
+        />
       )}
 
       {isParty && (

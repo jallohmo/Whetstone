@@ -36,6 +36,9 @@ export async function createBooking(formData: FormData) {
         select: { industryId: true, customerId: true },
       })
     : null;
+  // Only a need that resolved is worth recording; a stale or bogus id in the
+  // form must not be written as a dangling FK.
+  const linkedNeedId = need ? needId : null;
 
   const industryId =
     need?.industryId ||
@@ -64,6 +67,10 @@ export async function createBooking(formData: FormData) {
         customerId: customer.id,
         advisorId,
         packageId,
+        // The brief the advisor reads before the session (advisor/bookings and
+        // the booking thread). Stored rather than re-derived, so a client posting
+        // a second challenge later can't retarget this booking's context.
+        needId: linkedNeedId,
         // copied-at-booking-time fields
         sessionCount: pkg.sessionCount,
         scopeDescription: pkg.scopeDescription,
