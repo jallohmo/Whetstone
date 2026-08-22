@@ -5,6 +5,7 @@ import {
   countThisMonth,
   summariseSpend,
   SPENT_PAYMENT_STATUSES,
+  monthsWithEarnings,
 } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 
@@ -145,6 +146,36 @@ describe("dashboard helpers", () => {
 
     it("does not count a refund as spend", () => {
       expect(SPENT_PAYMENT_STATUSES).not.toContain("refunded");
+    });
+  });
+
+  /**
+   * Whether the earnings card has enough to draw. One bar beside six empty
+   * slots reads as a broken chart, not as a new advisor.
+   */
+  describe("monthsWithEarnings", () => {
+    const m = (...amounts: number[]) => amounts.map((amountMinor) => ({ amountMinor }));
+
+    it("counts only months that earned something", () => {
+      expect(monthsWithEarnings(m(0, 0, 12000, 0, 30600))).toBe(2);
+    });
+
+    it("is zero for a brand-new advisor", () => {
+      expect(monthsWithEarnings(m(0, 0, 0, 0, 0, 0, 0))).toBe(0);
+    });
+
+    it("is zero for an empty series", () => {
+      expect(monthsWithEarnings([])).toBe(0);
+    });
+
+    it("reports one for a single earning month — the case that looked broken", () => {
+      // A$306 in August and nothing else: the state that rendered a blank box
+      // with a figure floating in it.
+      expect(monthsWithEarnings(m(0, 0, 0, 0, 0, 0, 30600))).toBe(1);
+    });
+
+    it("does not count a negative amount as earnings", () => {
+      expect(monthsWithEarnings(m(-100, 12000))).toBe(1);
     });
   });
 });
