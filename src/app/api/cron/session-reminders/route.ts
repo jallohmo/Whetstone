@@ -14,6 +14,12 @@ import { IN_DELIVERY_BOOKING_STATUSES } from "@/lib/booking-status";
  * (<=1h out), each tracked by its own column so it sends exactly once. The email
  * itself derives "how soon" from the real time gap, so a late booking that only
  * ever hits the 1h window is still worded correctly.
+ *
+ * Runs HOURLY (vercel.json), and has to: the final-hour window is `now` to
+ * `now + 1h`, so on the old daily schedule it only ever matched sessions
+ * starting in the one hour after the run. Every other session got its 24h
+ * stamp and then never saw a second nudge, because the next run was already a
+ * day past the session. Both windows only mean anything at hourly cadence.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
