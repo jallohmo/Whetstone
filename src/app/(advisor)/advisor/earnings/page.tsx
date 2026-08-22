@@ -108,8 +108,13 @@ export default async function EarningsPage() {
 
       {/* Top metric grid */}
       <div className="mb-page-gap grid gap-4 sm:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-xl bg-ink p-card text-white shadow-ink-glow">
-          <Eyebrow tone="blue-300">Coming your way</Eyebrow>
+        {/* Held funds, in the brand's pale blue rather than solid ink. It still
+            reads as the hero next to the plain white "Released to date" card,
+            and the blue/green pair now carries meaning: blue is money waiting,
+            green is money paid. Solid black was heavier than a pending balance
+            warrants. */}
+        <div className="rounded-xl border border-brand-blue/15 bg-brand-blue-100 p-card text-ink shadow-card">
+          <Eyebrow tone="blue">Coming your way</Eyebrow>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-4">
             {pendingByCcy.size === 0 ? (
               <Money amountMinor={0} currency={DEFAULT_CURRENCY} className="text-[40px] font-bold tracking-[-0.02em]" />
@@ -119,7 +124,7 @@ export default async function EarningsPage() {
               ))
             )}
           </div>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="mt-2 text-sm text-gray-600">
             Released to you after each session completes.
           </p>
         </div>
