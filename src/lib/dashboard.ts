@@ -92,6 +92,17 @@ export function summariseSpend(rows: SpendRow[]): SpendSummary {
   };
 }
 
+/**
+ * How many of the charted months actually earned anything.
+ *
+ * A bar chart needs at least two points to be a chart; with one it is a single
+ * bar beside a row of empty slots, which reads as broken rather than as "new
+ * advisor". The earnings card uses this to show a sentence instead.
+ */
+export function monthsWithEarnings(series: readonly { amountMinor: number }[]): number {
+  return series.filter((b) => b.amountMinor > 0).length;
+}
+
 /** Short month label, e.g. "Sep". */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
