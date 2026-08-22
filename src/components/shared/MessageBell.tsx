@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { badgeLabel, bellLabel } from "@/lib/unread";
+import { cn } from "@/lib/cn";
 
 /**
- * Unread-message bell for the advisor header.
+ * Unread-message bell. Shared by both shells — the advisor dashboard header and
+ * the client top bar — differing only in where it points.
  *
  * Server component: the count is resolved when the page renders, so it is
  * accurate as of the last navigation and goes stale until the next one. That is
@@ -13,14 +15,26 @@ import { badgeLabel, bellLabel } from "@/lib/unread";
  * Renders the bell at zero as well, without a badge. A control that appears and
  * disappears is harder to find than one that is always in the same place.
  */
-export function MessageBell({ count, href = "/advisor/messages" }: { count: number; href?: string }) {
+export function MessageBell({
+  count,
+  href,
+  className,
+}: {
+  count: number;
+  /** Where this role's inbox lives: /advisor/messages or /messages. */
+  href: string;
+  className?: string;
+}) {
   const badge = badgeLabel(count);
 
   return (
     <Link
       href={href}
       aria-label={bellLabel(count)}
-      className="relative inline-flex h-11 w-11 items-center justify-center rounded-pill border border-gray-200 bg-white text-ink transition hover:-translate-y-px hover:shadow-float"
+      className={cn(
+        "relative inline-flex h-11 w-11 items-center justify-center rounded-pill text-ink transition hover:-translate-y-px",
+        className ?? "border border-gray-200 bg-white hover:shadow-float",
+      )}
     >
       <Bell size={18} strokeWidth={2} />
       {badge && (

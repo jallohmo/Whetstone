@@ -15,7 +15,7 @@ import { Money } from "@/components/shared/Money";
 import { DashCard } from "@/components/dashboard/DashCard";
 import { StatCard, DeltaPill } from "@/components/dashboard/StatCard";
 import { EarningsBarChart } from "@/components/dashboard/EarningsBarChart";
-import { MessageBell } from "@/components/advisor/MessageBell";
+import { MessageBell } from "@/components/shared/MessageBell";
 import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unreadTotal } from "@/lib/thread-reads";
@@ -163,7 +163,7 @@ export default async function AdvisorHomePage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <MessageBell count={unreadMessages} />
+          <MessageBell count={unreadMessages} href="/advisor/messages" />
           <Link
             href="/advisor/availability"
             className="inline-flex items-center gap-2 rounded-pill bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-ink-glow transition hover:-translate-y-px"
