@@ -6,6 +6,7 @@ import {
   summariseSpend,
   SPENT_PAYMENT_STATUSES,
   monthsWithEarnings,
+  payoutRowDate,
 } from "@/lib/dashboard";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 
@@ -176,6 +177,42 @@ describe("dashboard helpers", () => {
 
     it("does not count a negative amount as earnings", () => {
       expect(monthsWithEarnings(m(-100, 12000))).toBe(1);
+    });
+  });
+
+  /**
+   * Which date an earnings row is filed under. The advisor is reconciling
+   * against a bank statement, so the question is "when did I do the work",
+   * not "when was this booked" — and those can sit weeks apart.
+   */
+  describe("payoutRowDate", () => {
+    const booked = new Date("2026-08-01T00:00:00.000Z");
+    const session = new Date("2026-08-20T09:00:00.000Z");
+
+    it("files a row under its session, not its booking", () => {
+      expect(payoutRowDate(session, booked)).toEqual(session);
+    });
+
+    it("falls back to the booking date when no session is scheduled", () => {
+      // Not the epoch, and not dropped — an unscheduled booking still has to
+      // sort somewhere sensible.
+      expect(payoutRowDate(null, booked)).toEqual(booked);
+    });
+
+    it("keeps an unscheduled booking in the same timeline as the rest", () => {
+      const rows = [
+        { at: payoutRowDate(null, booked) },
+        { at: payoutRowDate(session, new Date("2026-07-01T00:00:00.000Z")) },
+      ].sort((a, b) => b.at.getTime() - a.at.getTime());
+      // The August session outranks the August booking, and both stay ordered.
+      expect(rows[0].at).toEqual(session);
+    });
+
+    it("uses the session even when it precedes the booking date", () => {
+      // Defensive: nothing stops a backdated session, and the rule is still
+      // "the session is the answer".
+      const past = new Date("2026-07-01T00:00:00.000Z");
+      expect(payoutRowDate(past, booked)).toEqual(past);
     });
   });
 });

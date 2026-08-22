@@ -2,15 +2,25 @@ import { redirect } from "next/navigation";
 import { Check, CheckCircle2, Clock } from "lucide-react";
 import { PageHeader, Card, Button, Eyebrow } from "@/components/ui";
 import { Money } from "@/components/shared/Money";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, displayName } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { payoutRowDate } from "@/lib/dashboard";
+import { platformFormat } from "@/lib/time";
 import { splitCommission, DEFAULT_CURRENCY } from "@/lib/currency";
 import { stripeEnabled } from "@/lib/stripe";
 import { startPayoutOnboarding } from "@/lib/actions/connect";
 
 // Screen 14 — Payout/earnings view (A6). Real payments: what's held, what's
 // released, and the payout status. Amounts respect each booking's currency.
+//
+// Rows are filed under WHO and WHEN. The table used to print a truncated
+// booking cuid and nothing else human-readable, so with a flat package price
+// every row read "A$102.00" against an opaque id — three identical lines an
+// advisor could not tell apart, let alone reconcile against a bank statement.
+// The date was already being fetched to sort by and simply never rendered.
 export const dynamic = "force-dynamic";
+
+const rowDate = platformFormat({ day: "numeric", month: "short", year: "numeric" });
 
 export default async function EarningsPage() {
   const user = await getCurrentUser();
@@ -25,20 +35,44 @@ export default async function EarningsPage() {
     }),
     prisma.payment.findMany({
       where: { booking: { advisor: { userId: user.id } } },
-      orderBy: { booking: { createdAt: "desc" } },
-      include: { booking: { select: { id: true, createdAt: true } } },
+      include: {
+        booking: {
+          select: {
+            id: true,
+            createdAt: true,
+            scopeDescription: true,
+            need: { select: { problemArea: true } },
+            sessions: { orderBy: { scheduledAt: "asc" }, take: 1, select: { scheduledAt: true } },
+            customer: {
+              select: {
+                businessName: true,
+                user: { select: { firstName: true, lastName: true, fullName: true, email: true } },
+              },
+            },
+          },
+        },
+      },
     }),
   ]);
   if (!profile) redirect("/advisor/apply");
 
   // Payout = gross minus commission. Group by held vs released.
-  const rows = payments.map((p) => ({
-    id: p.id,
-    bookingId: p.bookingId,
-    currency: p.currency,
-    payout: splitCommission(p.amountCents).advisorPayoutMinor,
-    status: p.status,
-  }));
+  const rows = payments
+    .map((p) => ({
+      id: p.id,
+      currency: p.currency,
+      payout: splitCommission(p.amountCents).advisorPayoutMinor,
+      status: p.status,
+      business: p.booking.customer.businessName,
+      person: displayName(p.booking.customer.user),
+      topic: p.booking.need?.problemArea ?? p.booking.scopeDescription,
+      scheduledAt: p.booking.sessions[0]?.scheduledAt ?? null,
+      // Sorted here rather than in the query: the session date lives on a
+      // related row, and "most recent work first" is the order an advisor
+      // reconciles in.
+      at: payoutRowDate(p.booking.sessions[0]?.scheduledAt ?? null, p.booking.createdAt),
+    }))
+    .sort((a, b) => b.at.getTime() - a.at.getTime());
 
   const pendingByCcy = new Map<string, number>();
   const releasedByCcy = new Map<string, number>();
@@ -112,19 +146,35 @@ export default async function EarningsPage() {
         <table className="w-full text-body">
           <thead className="border-b border-gray-200 text-left text-sm text-gray-500">
             <tr>
-              <th className="px-5 py-3 font-semibold">Booking</th>
+              <th className="px-5 py-3 font-semibold">Client</th>
+              <th className="px-5 py-3 font-semibold">Session</th>
               <th className="px-5 py-3 font-semibold">Your payout</th>
               <th className="px-5 py-3 font-semibold">Status</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={3} className="px-5 py-6 text-gray-500">No payments yet.</td></tr>
+              <tr><td colSpan={4} className="px-5 py-6 text-gray-500">No payments yet.</td></tr>
             ) : (
               rows.map((r) => (
                 <tr key={r.id} className="border-b border-gray-100 last:border-0">
+                  {/* The business is what an advisor recognises on an invoice;
+                      the person underneath is who they actually met. For a sole
+                      trader the two are often the same, so it is only shown
+                      when it adds something. */}
                   <td className="px-5 py-3.5">
-                    <span className="ws-mono text-sm text-gray-600">{r.bookingId.slice(0, 10)}…</span>
+                    <p className="font-semibold text-ink">{r.business || r.person}</p>
+                    {r.business && r.person !== r.business && (
+                      <p className="text-sm text-gray-500">{r.person}</p>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <p className="ws-mono text-sm text-gray-600">
+                      {r.scheduledAt ? rowDate.format(r.scheduledAt) : "Not scheduled yet"}
+                    </p>
+                    <p className="max-w-[22ch] truncate text-sm text-gray-500" title={r.topic}>
+                      {r.topic}
+                    </p>
                   </td>
                   <td className="px-5 py-3.5">
                     <Money amountMinor={r.payout} currency={r.currency} className="font-semibold text-ink" />
