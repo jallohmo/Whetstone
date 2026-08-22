@@ -137,16 +137,13 @@ environment with nothing extra to configure.
 
 Time-based, so they run from a scheduled endpoint rather than inline:
 
-- `vercel.json` registers a cron hitting `/api/cron/session-reminders`. It is
-  currently set to **once daily** (`0 9 * * *`) because **Hobby only allows
-  daily crons** — and a sub-daily schedule makes Vercel *reject the whole
-  deployment*, which is what caused the early preview build failures.
-  - At daily cadence only the **24h** reminder is meaningful; the **1h**
-    reminder can't work (the cron runs once a day, not hourly).
-  - **To get both windows**, upgrade to a plan that allows sub-daily crons
-    (Pro+) and change the schedule back to `*/15 * * * *` — or run the schedule
-    from Supabase `pg_cron` + `pg_net` calling the same endpoint with the Bearer
-    header.
+- `vercel.json` registers a cron hitting `/api/cron/session-reminders`, running
+  **hourly** (`0 * * * *`). Both reminder windows need that cadence: the 1h
+  window is `now` to `now + 1h`, so a daily run only ever caught sessions
+  starting in the hour after it, and everything else got its 24h stamp and then
+  no final nudge at all. Sub-daily crons need a plan that allows them (Pro+);
+  on Hobby, Vercel *rejects the whole deployment*, which is what caused the
+  early preview build failures.
 - Set **`CRON_SECRET`** in Vercel. The endpoint returns 401 unless the request
   carries `Authorization: Bearer <CRON_SECRET>` — Vercel Cron sends this
   automatically once the env var is set. Without it, reminders never run.
@@ -157,9 +154,12 @@ Time-based, so they run from a scheduled endpoint rather than inline:
 
 ### 5d. Booking lifecycle (Vercel Cron)
 
-A second daily cron at `/api/cron/booking-lifecycle` (`30 9 * * *`), guarded by
-the same `CRON_SECRET`. Three sweeps per run:
+A second hourly cron at `/api/cron/booking-lifecycle` (`30 * * * *`), guarded by
+the same `CRON_SECRET`. Five sweeps per run:
 
+- 3-hour nudge to clients who left a booking at `pending_payment` (stamped on
+  the booking, so it sends exactly once), and a 24-hour expiry that cancels the
+  booking and releases the advisor's reserved slot.
 - `confirmed` → `in_progress` once a booking's first session has started.
 - Day-3 nudge to clients sitting on an unconfirmed completion (stamped on the
   booking, so it sends exactly once).
@@ -167,9 +167,10 @@ the same `CRON_SECRET`. Three sweeps per run:
   payout. **This is load-bearing** — without it, a client who never confirms
   leaves the advisor's money held indefinitely.
 
-Both crons are daily, which keeps the project inside Hobby's cron limits (two
-jobs, daily cadence). The windows live in `src/lib/booking-status.ts`
-(`COMPLETION_REMINDER_DAYS`, `COMPLETION_AUTO_ACCEPT_DAYS`) — change them there,
+Both crons are hourly, staggered (`:00` and `:30`) so they don't run on top of
+each other. That needs a Vercel plan allowing sub-daily crons. The windows live
+in `src/lib/booking-status.ts` (`PAYMENT_REMINDER_HOURS`, `PAYMENT_EXPIRY_HOURS`,
+`COMPLETION_REMINDER_DAYS`, `COMPLETION_AUTO_ACCEPT_DAYS`) — change them there,
 not in the route.
 
 ## 6. Pre-launch activities — production domain & Stripe go-live
@@ -217,16 +218,15 @@ To take real payments:
 
 ### 6c. Session-reminder cron (Vercel plan + secret)
 
-The reminder cron (§5c) currently runs **once daily** (`0 9 * * *`) so it
-deploys on Hobby. For both the 24h and 1h reminders to fire:
+The reminder cron (§5c) runs **hourly** (`0 * * * *`), which is what both the
+24h and 1h windows need:
 
-1. **[ ] Enable sub-daily reminders (Pro plan).** Upgrade Vercel to a plan that
-   allows sub-daily crons (Pro+) and change `vercel.json` back to
-   `*/15 * * * *`. Until then the schedule stays daily and **only the 24h
-   reminder fires** — the 1h reminder needs this. A sub-daily schedule on Hobby
-   breaks the deployment, so don't set `*/15` before upgrading. (Alternative:
-   run the schedule from Supabase `pg_cron` + `pg_net` against the same
-   endpoint — see §5c.)
+1. **[ ] Confirm the Vercel plan allows sub-daily crons (Pro+).** Both crons in
+   `vercel.json` are hourly; on Hobby a sub-daily schedule makes Vercel reject
+   the deployment outright, so a failed build here is the first thing to check.
+   (Alternative if the project must sit on Hobby: drop both back to a daily
+   schedule and drive the real cadence from Supabase `pg_cron` + `pg_net`
+   against the same endpoints, sending the Bearer header yourself.)
 2. **[ ] Set `CRON_SECRET`** in Vercel (a long random string, e.g.
    `openssl rand -hex 32`). The endpoint returns 401 without it, so reminders
    won't run until it's set. Requires `RESEND_API_KEY` (§5b) to actually send.
