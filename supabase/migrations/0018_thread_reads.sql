@@ -35,7 +35,11 @@ alter table public.thread_reads enable row level security;
 -- user_id alone would let a party write a marker naming someone else's booking,
 -- and is_booking_party alone would let one party clear the other's badge.
 -- Reusing the existing security-definer helper keeps this consistent with the
--- messages policies rather than re-deriving "who is on this booking".
+-- messages policies rather than re-deriving "who is on this booking". It lives
+-- in `private`, not `public` — 0014 moved the RLS helpers out of the
+-- PostgREST-exposed schema so they cannot be called over /rest/v1/rpc, while
+-- staying callable from inside a policy. New policies must use that schema or
+-- they fail with "function does not exist".
 do $$
 begin
   if not exists (
@@ -44,7 +48,7 @@ begin
       and policyname = 'thread_reads_own_read'
   ) then
     create policy thread_reads_own_read on public.thread_reads
-      for select using (user_id = auth.uid()::text and public.is_booking_party(booking_id));
+      for select using (user_id = auth.uid()::text and private.is_booking_party(booking_id));
   end if;
 
   if not exists (
@@ -53,7 +57,7 @@ begin
       and policyname = 'thread_reads_own_write'
   ) then
     create policy thread_reads_own_write on public.thread_reads
-      for insert with check (user_id = auth.uid()::text and public.is_booking_party(booking_id));
+      for insert with check (user_id = auth.uid()::text and private.is_booking_party(booking_id));
   end if;
 
   if not exists (
@@ -62,8 +66,8 @@ begin
       and policyname = 'thread_reads_own_update'
   ) then
     create policy thread_reads_own_update on public.thread_reads
-      for update using (user_id = auth.uid()::text and public.is_booking_party(booking_id))
-      with check (user_id = auth.uid()::text and public.is_booking_party(booking_id));
+      for update using (user_id = auth.uid()::text and private.is_booking_party(booking_id))
+      with check (user_id = auth.uid()::text and private.is_booking_party(booking_id));
   end if;
 end $$;
 
