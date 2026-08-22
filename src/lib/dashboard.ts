@@ -103,6 +103,19 @@ export function monthsWithEarnings(series: readonly { amountMinor: number }[]): 
   return series.filter((b) => b.amountMinor > 0).length;
 }
 
+/**
+ * The date a payout row is filed under: when the session happened.
+ *
+ * "When did I earn this" is the session, not the booking — they can sit weeks
+ * apart, and an advisor reconciling against a bank statement is looking for the
+ * day they did the work. A booking whose session is not scheduled yet has no
+ * such date, so it falls back to when it was booked rather than dropping out of
+ * the ordering or sorting as the epoch.
+ */
+export function payoutRowDate(sessionAt: Date | null, createdAt: Date): Date {
+  return sessionAt ?? createdAt;
+}
+
 /** Short month label, e.g. "Sep". */
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
